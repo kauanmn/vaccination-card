@@ -3,6 +3,7 @@ using Api.Endpoints;
 using Api.Middlewares;
 using Api.OpenApi;
 using Infrastructure.Persistence.SQLite.Client;
+using Infrastructure.Persistence.SQLite.Seed;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -16,6 +17,7 @@ using (var scope = app.Services.CreateScope())
 {
     var context = scope.ServiceProvider.GetRequiredService<SqliteContext>();
     context.Database.EnsureCreated();
+    await VaccineSeeder.SeedAsync(context);
 }
 
 if (app.Environment.IsDevelopment())

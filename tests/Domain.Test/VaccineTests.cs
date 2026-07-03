@@ -32,4 +32,13 @@ public class VaccineTests
     {
         Assert.Throws<InvalidVaccineException>(() => new Vaccine("COVID-19", totalDoses));
     }
+
+    [Fact]
+    public void Constructor_WithNullTotalDoses_CreatesPeriodicVaccine()
+    {
+        var vaccine = new Vaccine("Influenza (Gripe)", totalDoses: null);
+
+        Assert.Null(vaccine.TotalDoses);
+        Assert.True(vaccine.IsPeriodic);
+    }
 }

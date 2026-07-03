@@ -8,5 +8,5 @@ public record CreateVaccineRequest
     public string Name { get; init; } = string.Empty;
 
     [JsonPropertyName("totalDoses")]
-    public int TotalDoses { get; init; }
+    public int? TotalDoses { get; init; }
 }

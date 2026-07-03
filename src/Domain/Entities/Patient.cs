@@ -35,9 +35,13 @@ public class Patient
     {
         ArgumentNullException.ThrowIfNull(vaccine);
 
-        if (dose < 1 || dose > vaccine.TotalDoses)
+        if (dose < 1)
             throw new InvalidVaccinationException(
-                $"Dose deve estar entre 1 e {vaccine.TotalDoses} para a vacina {vaccine.Name}.");
+                $"Dose deve ser maior que zero para a vacina {vaccine.Name}.");
+
+        if (vaccine.TotalDoses is int total && dose > total)
+            throw new InvalidVaccinationException(
+                $"Dose deve estar entre 1 e {total} para a vacina {vaccine.Name}.");
 
         var appliedDoses = _vaccinations
             .Where(v => v.VaccineId == vaccine.Id)

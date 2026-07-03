@@ -11,7 +11,9 @@ public class CreateVaccineRequestValidator : AbstractValidator<CreateVaccineRequ
             .NotEmpty().WithMessage("Nome é obrigatório.")
             .MaximumLength(200).WithMessage("Nome deve ter no máximo 200 caracteres.");
 
+        // null = vacina periódica (sem limite de doses). Só valida quando informado.
         RuleFor(x => x.TotalDoses)
-            .GreaterThan(0).WithMessage("Total de doses deve ser maior que zero.");
+            .GreaterThan(0).WithMessage("Total de doses deve ser maior que zero.")
+            .When(x => x.TotalDoses.HasValue);
     }
 }

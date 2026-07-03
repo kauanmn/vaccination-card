@@ -19,8 +19,8 @@ public class VaccineConfiguration : IEntityTypeConfiguration<Vaccine>
         builder.HasIndex(vaccine => vaccine.Name)
             .IsUnique(); 
 
-        builder.Property(vaccine => vaccine.TotalDoses)
-            .IsRequired();
+        // Coluna anulável: null = vacina periódica (sem limite de doses).
+        builder.Property(vaccine => vaccine.TotalDoses);
         
         builder.Property<bool>("IsDeleted")
             .HasDefaultValue(false);

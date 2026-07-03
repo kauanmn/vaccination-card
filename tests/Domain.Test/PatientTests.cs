@@ -127,6 +127,37 @@ public class PatientTests
     }
 
     [Fact]
+    public void AddVaccination_PeriodicVaccine_AcceptsDosesBeyondNormalSchedule()
+    {
+        var patient = NewPatient();
+        var flu = new Vaccine("Influenza (Gripe)", totalDoses: null);
+
+        for (var dose = 1; dose <= 5; dose++)
+            patient.AddVaccination(flu, dose, Today);
+
+        Assert.Equal(5, patient.Vaccinations.Count);
+    }
+
+    [Fact]
+    public void AddVaccination_PeriodicVaccine_StillEnforcesSequentialOrder()
+    {
+        var patient = NewPatient();
+        var flu = new Vaccine("Influenza (Gripe)", totalDoses: null);
+        patient.AddVaccination(flu, dose: 1, Today);
+
+        Assert.Throws<InvalidVaccinationException>(() => patient.AddVaccination(flu, dose: 3, Today));
+    }
+
+    [Fact]
+    public void AddVaccination_PeriodicVaccine_RejectsNonPositiveDose()
+    {
+        var patient = NewPatient();
+        var flu = new Vaccine("Influenza (Gripe)", totalDoses: null);
+
+        Assert.Throws<InvalidVaccinationException>(() => patient.AddVaccination(flu, dose: 0, Today));
+    }
+
+    [Fact]
     public void AddVaccination_DosesFromDifferentVaccines_AreIndependent()
     {
         var patient = NewPatient();
