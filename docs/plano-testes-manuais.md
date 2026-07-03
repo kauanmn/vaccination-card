@@ -11,9 +11,11 @@ cd src/Api
 dotnet run --launch-profile https
 ```
 
-- Base URL (HTTPS): `https://localhost:7077`
-- Base URL (HTTP): `http://localhost:5160`
+- Base URL (HTTPS): `https://localhost:7077/api`
+- Base URL (HTTP): `http://localhost:5160/api`
 - Swagger UI (só em Development): `https://localhost:7077/swagger` → usa `openapi/v1.json`
+
+> Todos os endpoints ficam sob o prefixo **`/api`** (`app.MapGroup("/api")` em `Program.cs`). Ex.: `https://localhost:7077/api/vaccines`. A raiz `https://localhost:7077/` cai no `MapFallbackToFile("index.html")` (SPA).
 
 > A app usa `UseHttpsRedirection`. Prefira o perfil **https** e use `curl -k` para ignorar o certificado dev. O banco SQLite (`vaccinationcard.db`) é criado com `EnsureCreated()` no start.
 
@@ -55,18 +57,18 @@ Erro:
 
 ---
 
-## 1. Autenticação (`/auth/login`)
+## 1. Autenticação (`/api/auth/login`)
 
 | #   | Cenário             | Passos                                                          | Esperado                                                               |
 | --- | ------------------- | --------------------------------------------------------------- | ---------------------------------------------------------------------- |
-| 1.1 | Login admin OK      | POST `/auth/login` `{"username":"admin","password":"admin123"}` | 200; `data.token`, `data.role="Admin"`, `data.expiresAt`               |
+| 1.1 | Login admin OK      | POST `/api/auth/login` `{"username":"admin","password":"admin123"}` | 200; `data.token`, `data.role="Admin"`, `data.expiresAt`               |
 | 1.2 | Login senha errada  | password inválida                                               | 401 `code=UNAUTHORIZED`                                                |
 | 1.3 | Usuário inexistente | username qualquer                                               | 401 `code=UNAUTHORIZED`                                                |
 | 1.4 | Campos vazios       | `{"username":"","password":""}`                                 | 400 `code=VALIDATION_ERROR` com `details` (Usuário/Senha obrigatórios) |
 | 1.5 | Login paciente OK   | credenciais geradas no passo 3.1                                | 200; `role="Patient"`                                                  |
 
 ```bash
-curl -k -s -X POST https://localhost:7077/auth/login \
+curl -k -s -X POST https://localhost:7077/api/auth/login \
   -H "Content-Type: application/json" \
   -d '{"username":"admin","password":"admin123"}'
 ```
@@ -79,107 +81,107 @@ ADMIN="<token do 1.1>"
 
 ---
 
-## 2. Vacinas (`/vaccines`)
+## 2. Vacinas (`/api/vaccines`)
 
 | #    | Cenário                    | Auth          | Passos                                                  | Esperado                                                    |
 | ---- | -------------------------- | ------------- | ------------------------------------------------------- | ----------------------------------------------------------- |
-| 2.1  | Listar vacinas (anônimo)   | nenhuma       | GET `/vaccines`                                         | 200; `data` paginado (`items`, `page`, `pageSize`, `total`) |
-| 2.2  | Criar vacina               | Admin         | POST `/vaccines` `{"name":"Hepatite B","totalDoses":3}` | 201; `data.id`, header `Location`                           |
-| 2.3  | Criar vacina sem token     | nenhuma       | POST `/vaccines`                                        | 401 `UNAUTHORIZED`                                          |
-| 2.4  | Criar vacina como paciente | Patient       | POST `/vaccines`                                        | 403 `FORBIDDEN`                                             |
+| 2.1  | Listar vacinas (anônimo)   | nenhuma       | GET `/api/vaccines`                                         | 200; `data` paginado (`items`, `page`, `pageSize`, `totalCount`, `totalPages`) |
+| 2.2  | Criar vacina               | Admin         | POST `/api/vaccines` `{"name":"Hepatite B","totalDoses":3}` | 201; `data.id`, header `Location`                           |
+| 2.3  | Criar vacina sem token     | nenhuma       | POST `/api/vaccines`                                        | 401 `UNAUTHORIZED`                                          |
+| 2.4  | Criar vacina como paciente | Patient       | POST `/api/vaccines`                                        | 403 `FORBIDDEN`                                             |
 | 2.5  | Nome vazio                 | Admin         | `{"name":"","totalDoses":2}`                            | 400 `VALIDATION_ERROR`                                      |
 | 2.6  | Doses <= 0                 | Admin         | `{"name":"BCG","totalDoses":0}`                         | 400 `VALIDATION_ERROR` (deve ser maior que zero)            |
-| 2.7  | Buscar por id              | Patient/Admin | GET `/vaccines/{id}`                                    | 200; dados da vacina                                        |
-| 2.8  | Buscar id inexistente      | autenticado   | GET `/vaccines/{guid-aleatorio}`                        | 404 `NOT_FOUND`                                             |
-| 2.9  | Buscar por id sem token    | nenhuma       | GET `/vaccines/{id}`                                    | 401 `UNAUTHORIZED`                                          |
-| 2.10 | Paginação                  | nenhuma       | GET `/vaccines?page=1&pageSize=1`                       | 200; respeita `pageSize`                                    |
+| 2.7  | Buscar por id              | Patient/Admin | GET `/api/vaccines/{id}`                                    | 200; dados da vacina                                        |
+| 2.8  | Buscar id inexistente      | autenticado   | GET `/api/vaccines/{guid-aleatorio}`                        | 404 `NOT_FOUND`                                             |
+| 2.9  | Buscar por id sem token    | nenhuma       | GET `/api/vaccines/{id}`                                    | 401 `UNAUTHORIZED`                                          |
+| 2.10 | Paginação                  | nenhuma       | GET `/api/vaccines?page=1&pageSize=1`                       | 200; respeita `pageSize`                                    |
 | 2.11 | Criar vacina periódica     | Admin         | `{"name":"Dengue","totalDoses":null}`                   | 201; `data.totalDoses = null`                               |
 | 2.12 | Periódica: campo omitido   | Admin         | `{"name":"Raiva"}` (sem `totalDoses`)                   | 201; `data.totalDoses = null` (tratada como periódica)      |
-| 2.13 | Listar traz periódicas     | nenhuma       | GET `/vaccines`                                         | 200; Influenza e dT com `totalDoses: null`                  |
+| 2.13 | Listar traz periódicas     | nenhuma       | GET `/api/vaccines`                                         | 200; Influenza e dT com `totalDoses: null`                  |
 
 ```bash
 # 2.2 criar vacina (guarde o id → VACCINE)
-curl -k -s -X POST https://localhost:7077/vaccines \
+curl -k -s -X POST https://localhost:7077/api/vaccines \
   -H "Authorization: Bearer $ADMIN" -H "Content-Type: application/json" \
   -d '{"name":"Hepatite B","totalDoses":3}'
 ```
 
-### 2.b Edição de vacina (`PATCH /vaccines/{id}`) — admin only
+### 2.b Edição de vacina (`PATCH /api/vaccines/{id}`) — admin only
 
 | #    | Cenário                          | Auth    | Passos                                                        | Esperado                                                     |
 | ---- | -------------------------------- | ------- | ------------------------------------------------------------- | ------------------------------------------------------------ |
-| 2.14 | Editar nome e doses              | Admin   | PATCH `/vaccines/{id}` `{"name":"Hepatite B (rec)","totalDoses":4}` | 200; `data` com novos valores                          |
-| 2.15 | Editar sem token                 | nenhuma | PATCH `/vaccines/{id}`                                        | 401 `UNAUTHORIZED`                                           |
-| 2.16 | Editar como paciente             | Patient | PATCH `/vaccines/{id}`                                        | 403 `FORBIDDEN`                                              |
+| 2.14 | Editar nome e doses              | Admin   | PATCH `/api/vaccines/{id}` `{"name":"Hepatite B (rec)","totalDoses":4}` | 200; `data` com novos valores                          |
+| 2.15 | Editar sem token                 | nenhuma | PATCH `/api/vaccines/{id}`                                        | 401 `UNAUTHORIZED`                                           |
+| 2.16 | Editar como paciente             | Patient | PATCH `/api/vaccines/{id}`                                        | 403 `FORBIDDEN`                                              |
 | 2.17 | Nome vazio                       | Admin   | `{"name":"","totalDoses":3}`                                  | 400 `VALIDATION_ERROR`                                       |
 | 2.18 | Doses <= 0                       | Admin   | `{"name":"BCG","totalDoses":0}`                               | 400 `VALIDATION_ERROR`                                       |
-| 2.19 | Id inexistente                   | Admin   | PATCH `/vaccines/{guid-aleatorio}`                            | 404 `NOT_FOUND`                                              |
+| 2.19 | Id inexistente                   | Admin   | PATCH `/api/vaccines/{guid-aleatorio}`                            | 404 `NOT_FOUND`                                              |
 | 2.20 | Reduzir abaixo de dose aplicada  | Admin   | vacina de 3 doses com dose 2 registrada → `{"totalDoses":1}`  | 400 `INVALID_PARAMETERS` (já existe registro de dose 2)      |
 | 2.21 | Tornar periódica                 | Admin   | `{"name":"Hepatite B","totalDoses":null}`                     | 200; `data.totalDoses = null` (mesmo com doses registradas)  |
 | 2.22 | Periódica → doses fixas          | Admin   | vacina periódica com dose 4 registrada → `{"totalDoses":2}`   | 400 `INVALID_PARAMETERS`; com `{"totalDoses":5}` → 200       |
 
 ```bash
 # 2.14 editar vacina
-curl -k -s -X PATCH https://localhost:7077/vaccines/$VACCINE \
+curl -k -s -X PATCH https://localhost:7077/api/vaccines/$VACCINE \
   -H "Authorization: Bearer $ADMIN" -H "Content-Type: application/json" \
   -d '{"name":"Hepatite B (recombinante)","totalDoses":4}'
 ```
 
 ---
 
-## 3. Pacientes (`/patients`)
+## 3. Pacientes (`/api/patients`)
 
 | #    | Cenário                      | Auth    | Passos                              | Esperado                                                                       |
 | ---- | ---------------------------- | ------- | ----------------------------------- | ------------------------------------------------------------------------------ |
-| 3.1  | Criar paciente               | Admin   | POST `/patients` `{"name":"Kauan"}` | 201; `data` com `id`, `name`, `username` (slug), `password` (gerada, 16 chars) |
-| 3.2  | Criar paciente sem token     | nenhuma | POST `/patients`                    | 401                                                                            |
-| 3.3  | Criar paciente como paciente | Patient | POST `/patients`                    | 403 `FORBIDDEN`                                                                |
+| 3.1  | Criar paciente               | Admin   | POST `/api/patients` `{"name":"Kauan"}` | 201; `data` com `id`, `name`, `username` (slug), `password` (gerada, 16 chars) |
+| 3.2  | Criar paciente sem token     | nenhuma | POST `/api/patients`                    | 401                                                                            |
+| 3.3  | Criar paciente como paciente | Patient | POST `/api/patients`                    | 403 `FORBIDDEN`                                                                |
 | 3.4  | Nome vazio                   | Admin   | `{"name":""}`                       | 400 `VALIDATION_ERROR`                                                         |
 | 3.5  | Username único               | Admin   | criar 2 pacientes "Kauan"           | segundo recebe `username` com sufixo numérico (ex.: `kauan2`)                  |
-| 3.6  | Listar pacientes             | Admin   | GET `/patients`                     | 200; paginado                                                                  |
-| 3.7  | Listar como paciente         | Patient | GET `/patients`                     | 403 `FORBIDDEN`                                                                |
-| 3.8  | Listar sem token             | nenhuma | GET `/patients`                     | 401                                                                            |
-| 3.9  | Ver próprio paciente         | Patient | GET `/patients/{ownId}`             | 200; `data` com `vaccinations`                                                 |
-| 3.10 | Ver paciente de outro        | Patient | GET `/patients/{outroId}`           | 403 `FORBIDDEN`                                                                |
-| 3.11 | Admin vê qualquer paciente   | Admin   | GET `/patients/{qualquerId}`        | 200                                                                            |
-| 3.12 | Id inexistente (admin)       | Admin   | GET `/patients/{guid-aleatorio}`    | 404 `NOT_FOUND`                                                                |
+| 3.6  | Listar pacientes             | Admin   | GET `/api/patients`                     | 200; paginado                                                                  |
+| 3.7  | Listar como paciente         | Patient | GET `/api/patients`                     | 403 `FORBIDDEN`                                                                |
+| 3.8  | Listar sem token             | nenhuma | GET `/api/patients`                     | 401                                                                            |
+| 3.9  | Ver próprio paciente         | Patient | GET `/api/patients/{ownId}`             | 200; `data` com `vaccinations`                                                 |
+| 3.10 | Ver paciente de outro        | Patient | GET `/api/patients/{outroId}`           | 403 `FORBIDDEN`                                                                |
+| 3.11 | Admin vê qualquer paciente   | Admin   | GET `/api/patients/{qualquerId}`        | 200                                                                            |
+| 3.12 | Id inexistente (admin)       | Admin   | GET `/api/patients/{guid-aleatorio}`    | 404 `NOT_FOUND`                                                                |
 
 ```bash
 # 3.1 criar paciente (guarde id, username, password)
-curl -k -s -X POST https://localhost:7077/patients \
+curl -k -s -X POST https://localhost:7077/api/patients \
   -H "Authorization: Bearer $ADMIN" -H "Content-Type: application/json" \
   -d '{"name":"Kauan"}'
 
 # login como paciente (guarde token → PAT)
-curl -k -s -X POST https://localhost:7077/auth/login \
+curl -k -s -X POST https://localhost:7077/api/auth/login \
   -H "Content-Type: application/json" \
   -d '{"username":"<username gerado>","password":"<password gerado>"}'
 ```
 
-### 3.b Edição de paciente (`PATCH /patients/{id}`) — próprio paciente ou admin
+### 3.b Edição de paciente (`PATCH /api/patients/{id}`) — próprio paciente ou admin
 
 Apenas o **nome** é editável; o `username` de acesso não muda.
 
 | #    | Cenário                     | Auth    | Passos                                          | Esperado                                        |
 | ---- | --------------------------- | ------- | ------------------------------------------------ | ----------------------------------------------- |
-| 3.13 | Paciente edita próprio nome | Patient | PATCH `/patients/{ownId}` `{"name":"Novo Nome"}` | 200; `data.name` atualizado                     |
-| 3.14 | Admin edita qualquer nome   | Admin   | PATCH `/patients/{id}`                           | 200                                             |
-| 3.15 | Editar paciente de outro    | Patient | PATCH `/patients/{outroId}`                      | 403 `FORBIDDEN`                                 |
-| 3.16 | Sem token                   | nenhuma | PATCH `/patients/{id}`                           | 401 `UNAUTHORIZED`                              |
+| 3.13 | Paciente edita próprio nome | Patient | PATCH `/api/patients/{ownId}` `{"name":"Novo Nome"}` | 200; `data.name` atualizado                     |
+| 3.14 | Admin edita qualquer nome   | Admin   | PATCH `/api/patients/{id}`                           | 200                                             |
+| 3.15 | Editar paciente de outro    | Patient | PATCH `/api/patients/{outroId}`                      | 403 `FORBIDDEN`                                 |
+| 3.16 | Sem token                   | nenhuma | PATCH `/api/patients/{id}`                           | 401 `UNAUTHORIZED`                              |
 | 3.17 | Nome vazio                  | Patient | `{"name":""}`                                    | 400 `VALIDATION_ERROR`                          |
-| 3.18 | Id inexistente (admin)      | Admin   | PATCH `/patients/{guid-aleatorio}`               | 404 `NOT_FOUND`                                 |
+| 3.18 | Id inexistente (admin)      | Admin   | PATCH `/api/patients/{guid-aleatorio}`               | 404 `NOT_FOUND`                                 |
 | 3.19 | Username não muda           | Patient | editar nome e relogar com username antigo        | login continua funcionando com o mesmo username |
 
 ```bash
 # 3.13 editar nome do próprio paciente
-curl -k -s -X PATCH https://localhost:7077/patients/$PATIENT_ID \
+curl -k -s -X PATCH https://localhost:7077/api/patients/$PATIENT_ID \
   -H "Authorization: Bearer $PAT" -H "Content-Type: application/json" \
   -d '{"name":"Kauan Manzato"}'
 ```
 
 ---
 
-## 4. Registro de Vacinação (`POST /patients/{patientId}/vaccinations`)
+## 4. Registro de Vacinação (`POST /api/patients/{patientId}/vaccinations`)
 
 Regras de negócio (entidade `Patient.AddVaccination`):
 
@@ -209,14 +211,14 @@ Regras de negócio (entidade `Patient.AddVaccination`):
 | 4.17 | Periódica dose <= 0         | Patient | vacina periódica: `dose:0`                              | 400 `VALIDATION_ERROR`                                      |
 
 ```bash
-curl -k -s -X POST https://localhost:7077/patients/$PATIENT_ID/vaccinations \
+curl -k -s -X POST https://localhost:7077/api/patients/$PATIENT_ID/vaccinations \
   -H "Authorization: Bearer $PAT" -H "Content-Type: application/json" \
   -d '{"vaccineId":"'$VACCINE'","dose":1,"applicationDate":"2026-01-10"}'
 ```
 
 ---
 
-## 4.b Edição de Vacinação (`PATCH /patients/{patientId}/vaccinations/{vaccinationId}`) — admin only
+## 4.b Edição de Vacinação (`PATCH /api/patients/{patientId}/vaccinations/{vaccinationId}`) — admin only
 
 Apenas a **data de aplicação** é editável. Dose e vacina não mudam (remova e registre de novo se necessário).
 
@@ -232,14 +234,14 @@ Apenas a **data de aplicação** é editável. Dose e vacina não mudam (remova 
 
 ```bash
 # 4.18 corrigir data de aplicação
-curl -k -s -X PATCH https://localhost:7077/patients/$PATIENT_ID/vaccinations/$VACCINATION_ID \
+curl -k -s -X PATCH https://localhost:7077/api/patients/$PATIENT_ID/vaccinations/$VACCINATION_ID \
   -H "Authorization: Bearer $ADMIN" -H "Content-Type: application/json" \
   -d '{"applicationDate":"2026-01-05"}'
 ```
 
 ---
 
-## 5. Remoção de Vacinação (`DELETE /patients/{patientId}/vaccinations/{vaccinationId}`)
+## 5. Remoção de Vacinação (`DELETE /api/patients/{patientId}/vaccinations/{vaccinationId}`)
 
 | #   | Cenário                   | Auth    | Esperado                                        |
 | --- | ------------------------- | ------- | ----------------------------------------------- |
@@ -247,7 +249,7 @@ curl -k -s -X PATCH https://localhost:7077/patients/$PATIENT_ID/vaccinations/$VA
 | 5.2 | Admin remove              | Admin   | 204                                             |
 | 5.3 | Remover de outro paciente | Patient | 403 `FORBIDDEN`                                 |
 | 5.4 | Sem token                 | nenhuma | 401                                             |
-| 5.5 | Confirmar remoção         | Patient | GET `/patients/{id}` não lista mais a vacinação |
+| 5.5 | Confirmar remoção         | Patient | GET `/api/patients/{id}` não lista mais a vacinação |
 
 > Nota: o `PatientOwnershipFilter` valida apenas a posse do `patientId`. Registrar novamente a mesma dose após remover deve voltar a ser possível (regra de sequência recalcula pelo que restou).
 
@@ -260,7 +262,7 @@ curl -k -s -X PATCH https://localhost:7077/patients/$PATIENT_ID/vaccinations/$VA
 | 6.1 | Token ausente em rota protegida                                                       | 401 `UNAUTHORIZED`                                         |
 | 6.2 | Token malformado (`Bearer abc`)                                                       | 401                                                        |
 | 6.3 | Token expirado                                                                        | 401 (expiração = 60 min, `ExpiryMinutes` em `appsettings`) |
-| 6.4 | Paciente acessa rota admin-only (`GET /patients`, `POST /patients`, `POST /vaccines`, `PATCH /vaccines/{id}`, `PATCH .../vaccinations/{id}`) | 403 `FORBIDDEN`                                            |
+| 6.4 | Paciente acessa rota admin-only (`GET /api/patients`, `POST /api/patients`, `POST /api/vaccines`, `PATCH /api/vaccines/{id}`, `PATCH .../vaccinations/{id}`) | 403 `FORBIDDEN`                                            |
 | 6.5 | Paciente acessa recurso de outro paciente                                             | 403 `FORBIDDEN`                                            |
 | 6.6 | Admin acessa qualquer recurso                                                         | 200                                                        |
 | 6.7 | Rota inexistente                                                                      | 404                                                        |
