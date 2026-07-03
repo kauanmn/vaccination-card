@@ -75,6 +75,50 @@ public class VaccinationUseCasesTests
     }
 
     [Fact]
+    public async Task Update_WhenBelongsToPatient_ChangesDateAndPersists()
+    {
+        var patient = new Patient("Kauan", "kauan", "hash");
+        var vaccine = new Vaccine("COVID-19", 3);
+        var vaccination = patient.AddVaccination(vaccine, 1, Today);
+        _patientRepository.GetByIdAsync(patient.Id).Returns(patient);
+        var useCase = new UpdateVaccination(_patientRepository, _vaccinationRepository);
+
+        var newDate = Today.AddDays(-5);
+        var response = await useCase.RunAsync(patient.Id, vaccination.Id,
+            new UpdateVaccinationRequest { ApplicationDate = newDate });
+
+        var updated = Assert.Single(response.Vaccinations);
+        Assert.Equal(newDate, updated.ApplicationDate);
+        await _vaccinationRepository.Received(1).UpdateAsync(
+            Arg.Is<Vaccination>(v => v.Id == vaccination.Id && v.ApplicationDate == newDate));
+    }
+
+    [Fact]
+    public async Task Update_WhenPatientMissing_ThrowsNotFound()
+    {
+        _patientRepository.GetByIdAsync(Arg.Any<Guid>()).Returns((Patient?)null);
+        var useCase = new UpdateVaccination(_patientRepository, _vaccinationRepository);
+
+        await Assert.ThrowsAsync<PatientNotFound>(() => useCase.RunAsync(Guid.NewGuid(), Guid.NewGuid(),
+            new UpdateVaccinationRequest { ApplicationDate = Today }));
+
+        await _vaccinationRepository.DidNotReceive().UpdateAsync(Arg.Any<Vaccination>());
+    }
+
+    [Fact]
+    public async Task Update_WhenVaccinationNotOnPatientCard_ThrowsNotFound()
+    {
+        var patient = new Patient("Kauan", "kauan", "hash");
+        _patientRepository.GetByIdAsync(patient.Id).Returns(patient);
+        var useCase = new UpdateVaccination(_patientRepository, _vaccinationRepository);
+
+        await Assert.ThrowsAsync<VaccinationNotFound>(() => useCase.RunAsync(patient.Id, Guid.NewGuid(),
+            new UpdateVaccinationRequest { ApplicationDate = Today }));
+
+        await _vaccinationRepository.DidNotReceive().UpdateAsync(Arg.Any<Vaccination>());
+    }
+
+    [Fact]
     public async Task Remove_WhenBelongsToPatient_SoftDeletes()
     {
         var patient = new Patient("Kauan", "kauan", "hash");

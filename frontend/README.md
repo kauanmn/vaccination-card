@@ -37,8 +37,8 @@ Para apontar para outra URL (ex.: produção), defina `VITE_API_URL` no build.
 
 | Papel        | O que vê                                                                                   |
 | ------------ | ------------------------------------------------------------------------------------------ |
-| **Admin**    | Lista/cadastro/exclusão de pacientes, credenciais geradas (exibidas uma única vez), cartão de qualquer paciente, cadastro de vacinas |
-| **Paciente** | O próprio cartão (registrar/remover doses) e o catálogo de vacinas                          |
+| **Admin**    | Lista/cadastro/edição/exclusão de pacientes, credenciais geradas (exibidas uma única vez), cartão de qualquer paciente, cadastro/edição de vacinas, correção de data de aplicação |
+| **Paciente** | O próprio cartão (registrar/remover doses, editar o próprio nome) e o catálogo de vacinas   |
 
 O id do paciente logado vem do claim de subject do JWT (decodificado no cliente apenas para navegação — a autorização real é feita pela API).
 
@@ -46,7 +46,7 @@ O id do paciente logado vem do claim de subject do JWT (decodificado no cliente 
 
 Página central (`/patients/:id`). Cada vacina do catálogo vira um card com:
 
-- chips verdes = doses aplicadas (com data; ✕ remove com confirmação);
+- chips verdes = doses aplicadas (com data; ✕ remove com confirmação; ✎ edita a data de aplicação — só admin);
 - chip tracejado = próxima dose (clique abre o registro já pré-preenchido);
 - chips cinza = doses futuras de vacinas com esquema fechado;
 - barra de progresso e selo “✓ Completa” para esquemas finitos; selo “Periódica” para vacinas sem teto de doses (`totalDoses = null`).

@@ -86,6 +86,46 @@ public class PatientUseCasesTests
     }
 
     [Fact]
+    public async Task UpdatePatient_WhenExists_RenamesAndPersists()
+    {
+        var patient = new Patient("Kauan", "kauan", "hash");
+        _patientRepository.GetByIdAsync(patient.Id).Returns(patient);
+        var useCase = new UpdatePatient(_patientRepository);
+
+        var response = await useCase.RunAsync(patient.Id,
+            new UpdatePatientRequest { Name = "Kauan Manzato" });
+
+        Assert.Equal("Kauan Manzato", response.Name);
+        await _patientRepository.Received(1).UpdateAsync(
+            Arg.Is<Patient>(p => p.Id == patient.Id && p.Name == "Kauan Manzato"));
+    }
+
+    [Fact]
+    public async Task UpdatePatient_WhenMissing_ThrowsAndDoesNotPersist()
+    {
+        _patientRepository.GetByIdAsync(Arg.Any<Guid>()).Returns((Patient?)null);
+        var useCase = new UpdatePatient(_patientRepository);
+
+        await Assert.ThrowsAsync<PatientNotFound>(
+            () => useCase.RunAsync(Guid.NewGuid(), new UpdatePatientRequest { Name = "Novo" }));
+
+        await _patientRepository.DidNotReceive().UpdateAsync(Arg.Any<Patient>());
+    }
+
+    [Fact]
+    public async Task UpdatePatient_WithInvalidName_ThrowsAndDoesNotPersist()
+    {
+        var patient = new Patient("Kauan", "kauan", "hash");
+        _patientRepository.GetByIdAsync(patient.Id).Returns(patient);
+        var useCase = new UpdatePatient(_patientRepository);
+
+        await Assert.ThrowsAsync<InvalidPatientException>(
+            () => useCase.RunAsync(patient.Id, new UpdatePatientRequest { Name = "" }));
+
+        await _patientRepository.DidNotReceive().UpdateAsync(Arg.Any<Patient>());
+    }
+
+    [Fact]
     public async Task DeletePatient_WhenExists_SoftDeletes()
     {
         var patient = new Patient("Kauan", "kauan", "hash");

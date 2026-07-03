@@ -18,4 +18,9 @@ public class Vaccination
     }
 
     private Vaccination() { }
+
+    public void ChangeApplicationDate(DateOnly applicationDate)
+    {
+        ApplicationDate = applicationDate;
+    }
 }

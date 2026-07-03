@@ -1,7 +1,12 @@
 import { useCallback, useEffect, useState } from "react";
 import type { FormEvent } from "react";
 import { Link } from "react-router-dom";
-import { createPatient, deletePatient, listPatients } from "../api/patients";
+import {
+  createPatient,
+  deletePatient,
+  listPatients,
+  updatePatient,
+} from "../api/patients";
 import { ConfirmDialog } from "../components/ConfirmDialog";
 import { Modal } from "../components/Modal";
 import { Pagination } from "../components/Pagination";
@@ -17,6 +22,7 @@ export function PatientsPage() {
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [creating, setCreating] = useState(false);
+  const [editing, setEditing] = useState<Patient | null>(null);
   const [deleting, setDeleting] = useState<Patient | null>(null);
 
   const load = useCallback(async () => {
@@ -129,6 +135,13 @@ export function PatientsPage() {
                       </Link>
                       <button
                         type="button"
+                        className="btn-secondary"
+                        onClick={() => setEditing(patient)}
+                      >
+                        Editar
+                      </button>
+                      <button
+                        type="button"
                         className="btn-ghost text-red-600 hover:bg-red-50"
                         onClick={() => setDeleting(patient)}
                       >
@@ -153,6 +166,18 @@ export function PatientsPage() {
         <CreatePatientModal
           onClose={() => setCreating(false)}
           onCreated={() => void load()}
+        />
+      )}
+
+      {editing && (
+        <EditPatientModal
+          patient={editing}
+          onClose={() => setEditing(null)}
+          onSaved={(updated) => {
+            setEditing(null);
+            toast("success", `Paciente "${updated.name}" atualizado.`);
+            void load();
+          }}
         />
       )}
 
@@ -271,6 +296,82 @@ function CreatePatientModal({
           </button>
           <button type="submit" className="btn-primary" disabled={busy}>
             {busy ? "Salvando…" : "Cadastrar"}
+          </button>
+        </div>
+      </form>
+    </Modal>
+  );
+}
+
+function EditPatientModal({
+  patient,
+  onClose,
+  onSaved,
+}: {
+  patient: Patient;
+  onClose: () => void;
+  onSaved: (patient: Patient) => void;
+}) {
+  const [name, setName] = useState(patient.name);
+  const [error, setError] = useState<string | null>(null);
+  const [fieldError, setFieldError] = useState<string | undefined>();
+  const [busy, setBusy] = useState(false);
+
+  const handleSubmit = async (event: FormEvent) => {
+    event.preventDefault();
+    setBusy(true);
+    setError(null);
+    setFieldError(undefined);
+
+    try {
+      const updated = await updatePatient(patient.id, name.trim());
+      onSaved(updated);
+    } catch (err) {
+      if (err instanceof ApiError) {
+        setFieldError(err.fieldError("name"));
+        setError(err.details.length > 0 ? null : err.message);
+      } else {
+        setError("Erro inesperado. Tente novamente.");
+      }
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <Modal title="Editar paciente" onClose={onClose}>
+      <form onSubmit={handleSubmit} className="space-y-4">
+        {error && <div className="alert-error">{error}</div>}
+
+        <div>
+          <label htmlFor="edit-patient-name" className="label">
+            Nome
+          </label>
+          <input
+            id="edit-patient-name"
+            className="input"
+            value={name}
+            onChange={(event) => setName(event.target.value)}
+            autoFocus
+          />
+          {fieldError && <p className="field-error">{fieldError}</p>}
+        </div>
+
+        <p className="text-xs text-slate-500">
+          O usuário de acesso não muda ao alterar o nome.
+        </p>
+
+        <div className="flex justify-end gap-2 pt-2">
+          <button
+            type="button"
+            className="btn-secondary"
+            onClick={onClose}
+            disabled={busy}
+          >
+            Cancelar
+          </button>
+          <button type="submit" className="btn-primary" disabled={busy}>
+            {busy ? "Salvando…" : "Salvar"}
           </button>
         </div>
       </form>

@@ -16,6 +16,13 @@ export function createPatient(name: string): Promise<CreatedPatient> {
   });
 }
 
+export function updatePatient(id: string, name: string): Promise<Patient> {
+  return request<Patient>(`/patients/${id}`, {
+    method: "PATCH",
+    body: { name },
+  });
+}
+
 export function deletePatient(id: string): Promise<void> {
   return request<void>(`/patients/${id}`, { method: "DELETE" });
 }
@@ -29,6 +36,17 @@ export function registerVaccination(
   return request<Patient>(`/patients/${patientId}/vaccinations`, {
     method: "POST",
     body: { vaccineId, dose, applicationDate },
+  });
+}
+
+export function updateVaccination(
+  patientId: string,
+  vaccinationId: string,
+  applicationDate: string,
+): Promise<Patient> {
+  return request<Patient>(`/patients/${patientId}/vaccinations/${vaccinationId}`, {
+    method: "PATCH",
+    body: { applicationDate },
   });
 }
 

@@ -8,4 +8,5 @@ public interface IVaccinationRepository
     Task UpdateAsync(Vaccination vaccination);
     Task SoftDeleteAsync(Guid id);
     Task<Vaccination?> GetByIdAsync(Guid id);
+    Task<int?> GetMaxDoseByVaccineAsync(Guid vaccineId);
 }

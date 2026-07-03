@@ -27,3 +27,14 @@ export function createVaccine(name: string, totalDoses: number | null): Promise<
     body: { name, totalDoses },
   });
 }
+
+export function updateVaccine(
+  id: string,
+  name: string,
+  totalDoses: number | null,
+): Promise<Vaccine> {
+  return request<Vaccine>(`/vaccines/${id}`, {
+    method: "PATCH",
+    body: { name, totalDoses },
+  });
+}

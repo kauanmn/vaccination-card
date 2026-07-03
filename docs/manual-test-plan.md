@@ -104,6 +104,27 @@ curl -k -s -X POST https://localhost:7077/vaccines \
   -d '{"name":"Hepatite B","totalDoses":3}'
 ```
 
+### 2.b Edição de vacina (`PATCH /vaccines/{id}`) — admin only
+
+| #    | Cenário                          | Auth    | Passos                                                        | Esperado                                                     |
+| ---- | -------------------------------- | ------- | ------------------------------------------------------------- | ------------------------------------------------------------ |
+| 2.14 | Editar nome e doses              | Admin   | PATCH `/vaccines/{id}` `{"name":"Hepatite B (rec)","totalDoses":4}` | 200; `data` com novos valores                          |
+| 2.15 | Editar sem token                 | nenhuma | PATCH `/vaccines/{id}`                                        | 401 `UNAUTHORIZED`                                           |
+| 2.16 | Editar como paciente             | Patient | PATCH `/vaccines/{id}`                                        | 403 `FORBIDDEN`                                              |
+| 2.17 | Nome vazio                       | Admin   | `{"name":"","totalDoses":3}`                                  | 400 `VALIDATION_ERROR`                                       |
+| 2.18 | Doses <= 0                       | Admin   | `{"name":"BCG","totalDoses":0}`                               | 400 `VALIDATION_ERROR`                                       |
+| 2.19 | Id inexistente                   | Admin   | PATCH `/vaccines/{guid-aleatorio}`                            | 404 `NOT_FOUND`                                              |
+| 2.20 | Reduzir abaixo de dose aplicada  | Admin   | vacina de 3 doses com dose 2 registrada → `{"totalDoses":1}`  | 400 `INVALID_PARAMETERS` (já existe registro de dose 2)      |
+| 2.21 | Tornar periódica                 | Admin   | `{"name":"Hepatite B","totalDoses":null}`                     | 200; `data.totalDoses = null` (mesmo com doses registradas)  |
+| 2.22 | Periódica → doses fixas          | Admin   | vacina periódica com dose 4 registrada → `{"totalDoses":2}`   | 400 `INVALID_PARAMETERS`; com `{"totalDoses":5}` → 200       |
+
+```bash
+# 2.14 editar vacina
+curl -k -s -X PATCH https://localhost:7077/vaccines/$VACCINE \
+  -H "Authorization: Bearer $ADMIN" -H "Content-Type: application/json" \
+  -d '{"name":"Hepatite B (recombinante)","totalDoses":4}'
+```
+
 ---
 
 ## 3. Pacientes (`/patients`)
@@ -133,6 +154,27 @@ curl -k -s -X POST https://localhost:7077/patients \
 curl -k -s -X POST https://localhost:7077/auth/login \
   -H "Content-Type: application/json" \
   -d '{"username":"<username gerado>","password":"<password gerado>"}'
+```
+
+### 3.b Edição de paciente (`PATCH /patients/{id}`) — próprio paciente ou admin
+
+Apenas o **nome** é editável; o `username` de acesso não muda.
+
+| #    | Cenário                     | Auth    | Passos                                          | Esperado                                        |
+| ---- | --------------------------- | ------- | ------------------------------------------------ | ----------------------------------------------- |
+| 3.13 | Paciente edita próprio nome | Patient | PATCH `/patients/{ownId}` `{"name":"Novo Nome"}` | 200; `data.name` atualizado                     |
+| 3.14 | Admin edita qualquer nome   | Admin   | PATCH `/patients/{id}`                           | 200                                             |
+| 3.15 | Editar paciente de outro    | Patient | PATCH `/patients/{outroId}`                      | 403 `FORBIDDEN`                                 |
+| 3.16 | Sem token                   | nenhuma | PATCH `/patients/{id}`                           | 401 `UNAUTHORIZED`                              |
+| 3.17 | Nome vazio                  | Patient | `{"name":""}`                                    | 400 `VALIDATION_ERROR`                          |
+| 3.18 | Id inexistente (admin)      | Admin   | PATCH `/patients/{guid-aleatorio}`               | 404 `NOT_FOUND`                                 |
+| 3.19 | Username não muda           | Patient | editar nome e relogar com username antigo        | login continua funcionando com o mesmo username |
+
+```bash
+# 3.13 editar nome do próprio paciente
+curl -k -s -X PATCH https://localhost:7077/patients/$PATIENT_ID \
+  -H "Authorization: Bearer $PAT" -H "Content-Type: application/json" \
+  -d '{"name":"Kauan Manzato"}'
 ```
 
 ---
@@ -174,6 +216,29 @@ curl -k -s -X POST https://localhost:7077/patients/$PATIENT_ID/vaccinations \
 
 ---
 
+## 4.b Edição de Vacinação (`PATCH /patients/{patientId}/vaccinations/{vaccinationId}`) — admin only
+
+Apenas a **data de aplicação** é editável. Dose e vacina não mudam (remova e registre de novo se necessário).
+
+| #    | Cenário                    | Auth    | Passos                                       | Esperado                                            |
+| ---- | -------------------------- | ------- | -------------------------------------------- | ---------------------------------------------------- |
+| 4.18 | Admin corrige data         | Admin   | body `{"applicationDate":"2026-01-05"}`      | 200; `data` do paciente com a data atualizada        |
+| 4.19 | Paciente tenta editar      | Patient | mesmo endpoint (inclusive registro próprio)  | 403 `FORBIDDEN`                                      |
+| 4.20 | Sem token                  | nenhuma | —                                            | 401 `UNAUTHORIZED`                                   |
+| 4.21 | Data futura                | Admin   | `{"applicationDate":"2030-01-01"}`           | 400 `VALIDATION_ERROR` (não pode ser futura)         |
+| 4.22 | Data ausente/`0001-01-01`  | Admin   | `applicationDate` default                    | 400 `VALIDATION_ERROR`                               |
+| 4.23 | Vacinação inexistente      | Admin   | `vaccinationId` aleatório                    | 404 `NOT_FOUND`                                      |
+| 4.24 | Vacinação de outro paciente| Admin   | `vaccinationId` válido com `patientId` errado | 404 `NOT_FOUND` (registro não pertence ao paciente) |
+
+```bash
+# 4.18 corrigir data de aplicação
+curl -k -s -X PATCH https://localhost:7077/patients/$PATIENT_ID/vaccinations/$VACCINATION_ID \
+  -H "Authorization: Bearer $ADMIN" -H "Content-Type: application/json" \
+  -d '{"applicationDate":"2026-01-05"}'
+```
+
+---
+
 ## 5. Remoção de Vacinação (`DELETE /patients/{patientId}/vaccinations/{vaccinationId}`)
 
 | #   | Cenário                   | Auth    | Esperado                                        |
@@ -195,7 +260,7 @@ curl -k -s -X POST https://localhost:7077/patients/$PATIENT_ID/vaccinations \
 | 6.1 | Token ausente em rota protegida                                                       | 401 `UNAUTHORIZED`                                         |
 | 6.2 | Token malformado (`Bearer abc`)                                                       | 401                                                        |
 | 6.3 | Token expirado                                                                        | 401 (expiração = 60 min, `ExpiryMinutes` em `appsettings`) |
-| 6.4 | Paciente acessa rota admin-only (`GET /patients`, `POST /patients`, `POST /vaccines`) | 403 `FORBIDDEN`                                            |
+| 6.4 | Paciente acessa rota admin-only (`GET /patients`, `POST /patients`, `POST /vaccines`, `PATCH /vaccines/{id}`, `PATCH .../vaccinations/{id}`) | 403 `FORBIDDEN`                                            |
 | 6.5 | Paciente acessa recurso de outro paciente                                             | 403 `FORBIDDEN`                                            |
 | 6.6 | Admin acessa qualquer recurso                                                         | 200                                                        |
 | 6.7 | Rota inexistente                                                                      | 404                                                        |
@@ -210,9 +275,12 @@ Teste de expiração rápido: reduza `Auth:Jwt:ExpiryMinutes` para `1` em `appse
 - [ ] Login: admin, paciente, credenciais inválidas, validação
 - [ ] Vacinas: listar (anon), criar (admin), buscar id, 404, autorização, validação, paginação
 - [ ] Vacinas periódicas: criar com `totalDoses` null/omitido, listar traz seed periódico
+- [ ] Editar vacina (admin): nome/doses, guarda de redução abaixo de dose aplicada, tornar periódica, 403 paciente
 - [ ] Vacinação periódica: doses ilimitadas, ordem sequencial mantida, sem duplicar, dose <= 0
 - [ ] Pacientes: criar (senha gerada + slug único), listar (admin), ver próprio/alheio, autorização
+- [ ] Editar paciente: próprio nome (paciente), qualquer nome (admin), 403 alheio, username preservado
 - [ ] Vacinação: registrar (regras de dose/ordem/duplicidade/data), 404 vacina, ownership
+- [ ] Editar vacinação (admin only): corrigir data, data futura rejeitada, 403 paciente, 404 registro alheio
 - [ ] Remover vacinação: própria, admin, ownership, confirmação
 - [ ] Segurança: 401/403 em todas as combinações, expiração, CORS
 - [ ] Envelope de resposta (`success`/`data`/`error`) consistente em todos os casos

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import type { FormEvent } from "react";
-import { createVaccine, listVaccines } from "../api/vaccines";
+import { createVaccine, listVaccines, updateVaccine } from "../api/vaccines";
 import { useAuth } from "../auth/AuthContext";
 import { Modal } from "../components/Modal";
 import { Pagination } from "../components/Pagination";
@@ -17,6 +17,7 @@ export function VaccinesPage() {
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [creating, setCreating] = useState(false);
+  const [editing, setEditing] = useState<Vaccine | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -33,6 +34,8 @@ export function VaccinesPage() {
   useEffect(() => {
     void load();
   }, [load]);
+
+  const columns = isAdmin ? 3 : 2;
 
   return (
     <div>
@@ -56,19 +59,20 @@ export function VaccinesPage() {
             <tr>
               <th className="px-4 py-3">Nome</th>
               <th className="px-4 py-3">Esquema de doses</th>
+              {isAdmin && <th className="px-4 py-3 text-right">Ações</th>}
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100">
             {loading && (
               <tr>
-                <td colSpan={2} className="px-4 py-8 text-center text-slate-400">
+                <td colSpan={columns} className="px-4 py-8 text-center text-slate-400">
                   Carregando…
                 </td>
               </tr>
             )}
             {!loading && data?.items.length === 0 && (
               <tr>
-                <td colSpan={2} className="px-4 py-8 text-center text-slate-400">
+                <td colSpan={columns} className="px-4 py-8 text-center text-slate-400">
                   Nenhuma vacina cadastrada.
                 </td>
               </tr>
@@ -88,6 +92,19 @@ export function VaccinesPage() {
                       </span>
                     )}
                   </td>
+                  {isAdmin && (
+                    <td className="px-4 py-3">
+                      <div className="flex justify-end">
+                        <button
+                          type="button"
+                          className="btn-secondary"
+                          onClick={() => setEditing(vaccine)}
+                        >
+                          Editar
+                        </button>
+                      </div>
+                    </td>
+                  )}
                 </tr>
               ))}
           </tbody>
@@ -96,11 +113,23 @@ export function VaccinesPage() {
       </div>
 
       {creating && (
-        <CreateVaccineModal
+        <VaccineFormModal
           onClose={() => setCreating(false)}
-          onCreated={(vaccine) => {
+          onSaved={(vaccine) => {
             setCreating(false);
             toast("success", `Vacina "${vaccine.name}" cadastrada.`);
+            void load();
+          }}
+        />
+      )}
+
+      {editing && (
+        <VaccineFormModal
+          vaccine={editing}
+          onClose={() => setEditing(null)}
+          onSaved={(vaccine) => {
+            setEditing(null);
+            toast("success", `Vacina "${vaccine.name}" atualizada.`);
             void load();
           }}
         />
@@ -109,16 +138,21 @@ export function VaccinesPage() {
   );
 }
 
-function CreateVaccineModal({
+function VaccineFormModal({
+  vaccine,
   onClose,
-  onCreated,
+  onSaved,
 }: {
+  /** Presente = edição; ausente = cadastro. */
+  vaccine?: Vaccine;
   onClose: () => void;
-  onCreated: (vaccine: Vaccine) => void;
+  onSaved: (vaccine: Vaccine) => void;
 }) {
-  const [name, setName] = useState("");
-  const [periodic, setPeriodic] = useState(false);
-  const [totalDoses, setTotalDoses] = useState("1");
+  const isEdit = vaccine !== undefined;
+
+  const [name, setName] = useState(vaccine?.name ?? "");
+  const [periodic, setPeriodic] = useState(vaccine ? vaccine.totalDoses == null : false);
+  const [totalDoses, setTotalDoses] = useState(String(vaccine?.totalDoses ?? 1));
   const [error, setError] = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = useState<{ name?: string; totalDoses?: string }>({});
   const [busy, setBusy] = useState(false);
@@ -131,8 +165,10 @@ function CreateVaccineModal({
 
     try {
       const doses = periodic ? null : Number(totalDoses);
-      const vaccine = await createVaccine(name.trim(), doses);
-      onCreated(vaccine);
+      const saved = isEdit
+        ? await updateVaccine(vaccine.id, name.trim(), doses)
+        : await createVaccine(name.trim(), doses);
+      onSaved(saved);
     } catch (err) {
       if (err instanceof ApiError) {
         setFieldErrors({
@@ -149,7 +185,7 @@ function CreateVaccineModal({
   };
 
   return (
-    <Modal title="Nova vacina" onClose={onClose}>
+    <Modal title={isEdit ? "Editar vacina" : "Nova vacina"} onClose={onClose}>
       <form onSubmit={handleSubmit} className="space-y-4">
         {error && <div className="alert-error">{error}</div>}
 
@@ -195,12 +231,18 @@ function CreateVaccineModal({
           </div>
         )}
 
+        {isEdit && (
+          <p className="text-xs text-slate-500">
+            O total de doses não pode ficar abaixo da maior dose já registrada para esta vacina.
+          </p>
+        )}
+
         <div className="flex justify-end gap-2 pt-2">
           <button type="button" className="btn-secondary" onClick={onClose} disabled={busy}>
             Cancelar
           </button>
           <button type="submit" className="btn-primary" disabled={busy}>
-            {busy ? "Salvando…" : "Cadastrar"}
+            {busy ? "Salvando…" : isEdit ? "Salvar" : "Cadastrar"}
           </button>
         </div>
       </form>

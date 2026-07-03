@@ -38,6 +38,16 @@ public static class PatientEndpoints
             .Produces<ErrorResponse>(StatusCodes.Status400BadRequest)
             .Produces<ErrorResponse>(StatusCodes.Status403Forbidden);
 
+        group.MapPatch("/{id:guid}", Update)
+            .WithName("UpdatePatient")
+            .RequireAuthorization()
+            .AddEndpointFilter<PatientOwnershipFilter>()
+            .AddEndpointFilter<ValidationFilter<UpdatePatientRequest>>()
+            .Produces<SuccessResponse<PatientResponse>>()
+            .Produces<ErrorResponse>(StatusCodes.Status400BadRequest)
+            .Produces<ErrorResponse>(StatusCodes.Status403Forbidden)
+            .Produces<ErrorResponse>(StatusCodes.Status404NotFound);
+
         group.MapDelete("/{id:guid}", Delete)
             .WithName("DeletePatient")
             .RequireAuthorization()
@@ -52,6 +62,15 @@ public static class PatientEndpoints
             .AddEndpointFilter<PatientOwnershipFilter>()
             .AddEndpointFilter<ValidationFilter<RegisterVaccinationRequest>>()
             .Produces<SuccessResponse<PatientResponse>>(StatusCodes.Status201Created)
+            .Produces<ErrorResponse>(StatusCodes.Status400BadRequest)
+            .Produces<ErrorResponse>(StatusCodes.Status403Forbidden)
+            .Produces<ErrorResponse>(StatusCodes.Status404NotFound);
+
+        group.MapPatch("/{patientId:guid}/vaccinations/{vaccinationId:guid}", UpdateVaccination)
+            .WithName("UpdateVaccination")
+            .RequireAuthorization(AuthDiConfiguration.AdminOnlyPolicy)
+            .AddEndpointFilter<ValidationFilter<UpdateVaccinationRequest>>()
+            .Produces<SuccessResponse<PatientResponse>>()
             .Produces<ErrorResponse>(StatusCodes.Status400BadRequest)
             .Produces<ErrorResponse>(StatusCodes.Status403Forbidden)
             .Produces<ErrorResponse>(StatusCodes.Status404NotFound);
@@ -88,6 +107,15 @@ public static class PatientEndpoints
         return Results.CreatedAtRoute("GetPatientById", new { id = patient.Id }, patient);
     }
 
+    private static async Task<IResult> Update(
+        Guid id,
+        UpdatePatientRequest request,
+        [FromServices] UpdatePatient useCase)
+    {
+        var patient = await useCase.RunAsync(id, request);
+        return Results.Ok(patient);
+    }
+
     private static async Task<IResult> Delete(Guid id, [FromServices] DeletePatient useCase)
     {
         await useCase.RunAsync(id);
@@ -101,6 +129,16 @@ public static class PatientEndpoints
     {
         var patient = await useCase.RunAsync(patientId, request);
         return Results.CreatedAtRoute("GetPatientById", new { id = patient.Id }, patient);
+    }
+
+    private static async Task<IResult> UpdateVaccination(
+        Guid patientId,
+        Guid vaccinationId,
+        UpdateVaccinationRequest request,
+        [FromServices] UpdateVaccination useCase)
+    {
+        var patient = await useCase.RunAsync(patientId, vaccinationId, request);
+        return Results.Ok(patient);
     }
 
     private static async Task<IResult> RemoveVaccination(

@@ -32,6 +32,15 @@ public static class VaccineEndpoints
             .Produces<SuccessResponse<VaccineResponse>>(StatusCodes.Status201Created)
             .Produces<ErrorResponse>(StatusCodes.Status400BadRequest)
             .Produces<ErrorResponse>(StatusCodes.Status403Forbidden);
+
+        group.MapPatch("/{id:guid}", Update)
+            .WithName("UpdateVaccine")
+            .RequireAuthorization(AuthDiConfiguration.AdminOnlyPolicy)
+            .AddEndpointFilter<ValidationFilter<UpdateVaccineRequest>>()
+            .Produces<SuccessResponse<VaccineResponse>>()
+            .Produces<ErrorResponse>(StatusCodes.Status400BadRequest)
+            .Produces<ErrorResponse>(StatusCodes.Status403Forbidden)
+            .Produces<ErrorResponse>(StatusCodes.Status404NotFound);
     }
 
     private static async Task<IResult> List(
@@ -55,5 +64,14 @@ public static class VaccineEndpoints
     {
         var vaccine = await useCase.RunAsync(request);
         return Results.CreatedAtRoute("GetVaccineById", new { id = vaccine.Id }, vaccine);
+    }
+
+    private static async Task<IResult> Update(
+        Guid id,
+        UpdateVaccineRequest request,
+        [FromServices] UpdateVaccine useCase)
+    {
+        var vaccine = await useCase.RunAsync(id, request);
+        return Results.Ok(vaccine);
     }
 }

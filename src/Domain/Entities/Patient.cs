@@ -31,6 +31,14 @@ public class Patient
 
     private Patient() { }
 
+    public void Rename(string name)
+    {
+        if (string.IsNullOrWhiteSpace(name))
+            throw new InvalidPatientException();
+
+        Name = name;
+    }
+
     public Vaccination AddVaccination(Vaccine vaccine, int dose, DateOnly applicationDate)
     {
         ArgumentNullException.ThrowIfNull(vaccine);

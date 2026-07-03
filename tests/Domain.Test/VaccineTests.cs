@@ -41,4 +41,48 @@ public class VaccineTests
         Assert.Null(vaccine.TotalDoses);
         Assert.True(vaccine.IsPeriodic);
     }
+
+    [Fact]
+    public void Update_WithValidData_ChangesNameAndTotalDoses()
+    {
+        var vaccine = new Vaccine("COVID-19", totalDoses: 3);
+
+        vaccine.Update("COVID-19 (bivalente)", totalDoses: 4);
+
+        Assert.Equal("COVID-19 (bivalente)", vaccine.Name);
+        Assert.Equal(4, vaccine.TotalDoses);
+    }
+
+    [Fact]
+    public void Update_WithNullTotalDoses_BecomesPeriodic()
+    {
+        var vaccine = new Vaccine("COVID-19", totalDoses: 3);
+
+        vaccine.Update("COVID-19", totalDoses: null);
+
+        Assert.True(vaccine.IsPeriodic);
+    }
+
+    [Theory]
+    [InlineData("")]
+    [InlineData("   ")]
+    [InlineData(null)]
+    public void Update_WithInvalidName_ThrowsAndKeepsState(string? name)
+    {
+        var vaccine = new Vaccine("COVID-19", totalDoses: 3);
+
+        Assert.Throws<InvalidVaccineException>(() => vaccine.Update(name!, totalDoses: 3));
+        Assert.Equal("COVID-19", vaccine.Name);
+    }
+
+    [Theory]
+    [InlineData(0)]
+    [InlineData(-1)]
+    public void Update_WithInvalidTotalDoses_ThrowsAndKeepsState(int totalDoses)
+    {
+        var vaccine = new Vaccine("COVID-19", totalDoses: 3);
+
+        Assert.Throws<InvalidVaccineException>(() => vaccine.Update("COVID-19", totalDoses));
+        Assert.Equal(3, vaccine.TotalDoses);
+    }
 }

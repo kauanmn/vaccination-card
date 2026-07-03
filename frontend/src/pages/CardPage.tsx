@@ -5,6 +5,8 @@ import {
   getPatient,
   registerVaccination,
   removeVaccination,
+  updatePatient,
+  updateVaccination,
 } from "../api/patients";
 import { listAllVaccines } from "../api/vaccines";
 import { useAuth } from "../auth/AuthContext";
@@ -35,6 +37,11 @@ export function CardPage() {
   const [registering, setRegistering] = useState<{ vaccineId?: string } | null>(
     null,
   );
+  const [editingName, setEditingName] = useState(false);
+  const [editingDose, setEditingDose] = useState<{
+    vaccination: Vaccination;
+    vaccineName: string;
+  } | null>(null);
   const [removing, setRemoving] = useState<{
     vaccination: Vaccination;
     vaccineName: string;
@@ -143,13 +150,22 @@ export function CardPage() {
               : "vacinações registradas"}
           </p>
         </div>
-        <button
-          type="button"
-          className="btn-primary"
-          onClick={() => setRegistering({})}
-        >
-          + Registrar vacinação
-        </button>
+        <div className="flex gap-2">
+          <button
+            type="button"
+            className="btn-secondary"
+            onClick={() => setEditingName(true)}
+          >
+            Editar nome
+          </button>
+          <button
+            type="button"
+            className="btn-primary"
+            onClick={() => setRegistering({})}
+          >
+            + Registrar vacinação
+          </button>
+        </div>
       </div>
 
       {vaccines.length === 0 ? (
@@ -163,6 +179,15 @@ export function CardPage() {
               key={card.vaccine.id}
               card={card}
               onRegister={() => setRegistering({ vaccineId: card.vaccine.id })}
+              onEdit={
+                isAdmin
+                  ? (vaccination) =>
+                      setEditingDose({
+                        vaccination,
+                        vaccineName: card.vaccine.name,
+                      })
+                  : undefined
+              }
               onRemove={(vaccination) =>
                 setRemoving({ vaccination, vaccineName: card.vaccine.name })
               }
@@ -184,6 +209,15 @@ export function CardPage() {
               <DoseChip
                 key={vaccination.id}
                 vaccination={vaccination}
+                onEdit={
+                  isAdmin
+                    ? () =>
+                        setEditingDose({
+                          vaccination,
+                          vaccineName: "vacina desconhecida",
+                        })
+                    : undefined
+                }
                 onRemove={() =>
                   setRemoving({
                     vaccination,
@@ -210,6 +244,32 @@ export function CardPage() {
         />
       )}
 
+      {editingName && (
+        <EditNameModal
+          patient={patient}
+          onClose={() => setEditingName(false)}
+          onSaved={(updated) => {
+            setEditingName(false);
+            setPatient(updated);
+            toast("success", "Nome atualizado.");
+          }}
+        />
+      )}
+
+      {editingDose && (
+        <EditVaccinationModal
+          patientId={patient.id}
+          vaccination={editingDose.vaccination}
+          vaccineName={editingDose.vaccineName}
+          onClose={() => setEditingDose(null)}
+          onSaved={(updated) => {
+            setEditingDose(null);
+            setPatient(updated);
+            toast("success", "Data de aplicação atualizada.");
+          }}
+        />
+      )}
+
       {removing && (
         <ConfirmDialog
           title="Remover registro"
@@ -232,10 +292,12 @@ export function CardPage() {
 function VaccineCard({
   card,
   onRegister,
+  onEdit,
   onRemove,
 }: {
   card: VaccineCardModel;
   onRegister: () => void;
+  onEdit?: (vaccination: Vaccination) => void;
   onRemove: (vaccination: Vaccination) => void;
 }) {
   const { vaccine, applied, nextDose, isComplete } = card;
@@ -276,6 +338,7 @@ function VaccineCard({
           <DoseChip
             key={vaccination.id}
             vaccination={vaccination}
+            onEdit={onEdit ? () => onEdit(vaccination) : undefined}
             onRemove={() => onRemove(vaccination)}
           />
         ))}
@@ -308,9 +371,11 @@ function VaccineCard({
 
 function DoseChip({
   vaccination,
+  onEdit,
   onRemove,
 }: {
   vaccination: Vaccination;
+  onEdit?: () => void;
   onRemove: () => void;
 }) {
   return (
@@ -319,6 +384,17 @@ function DoseChip({
       <span className="text-teal-800/70">
         {formatDate(vaccination.applicationDate)}
       </span>
+      {onEdit && (
+        <button
+          type="button"
+          onClick={onEdit}
+          aria-label={`Editar data da ${vaccination.dose}ª dose`}
+          title="Editar data de aplicação"
+          className="rounded p-0.5 text-teal-700/50 transition-colors hover:bg-teal-100 hover:text-teal-800"
+        >
+          ✎
+        </button>
+      )}
       <button
         type="button"
         onClick={onRemove}
@@ -329,6 +405,171 @@ function DoseChip({
         ✕
       </button>
     </span>
+  );
+}
+
+function EditNameModal({
+  patient,
+  onClose,
+  onSaved,
+}: {
+  patient: Patient;
+  onClose: () => void;
+  onSaved: (patient: Patient) => void;
+}) {
+  const [name, setName] = useState(patient.name);
+  const [error, setError] = useState<string | null>(null);
+  const [fieldError, setFieldError] = useState<string | undefined>();
+  const [busy, setBusy] = useState(false);
+
+  const handleSubmit = async (event: FormEvent) => {
+    event.preventDefault();
+    setBusy(true);
+    setError(null);
+    setFieldError(undefined);
+
+    try {
+      const updated = await updatePatient(patient.id, name.trim());
+      onSaved(updated);
+    } catch (err) {
+      if (err instanceof ApiError) {
+        setFieldError(err.fieldError("name"));
+        setError(err.details.length > 0 ? null : err.message);
+      } else {
+        setError("Erro inesperado. Tente novamente.");
+      }
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <Modal title="Editar nome" onClose={onClose}>
+      <form onSubmit={handleSubmit} className="space-y-4">
+        {error && <div className="alert-error">{error}</div>}
+
+        <div>
+          <label htmlFor="card-patient-name" className="label">
+            Nome
+          </label>
+          <input
+            id="card-patient-name"
+            className="input"
+            value={name}
+            onChange={(event) => setName(event.target.value)}
+            autoFocus
+          />
+          {fieldError && <p className="field-error">{fieldError}</p>}
+        </div>
+
+        <p className="text-xs text-slate-500">
+          O usuário de acesso não muda ao alterar o nome.
+        </p>
+
+        <div className="flex justify-end gap-2 pt-2">
+          <button
+            type="button"
+            className="btn-secondary"
+            onClick={onClose}
+            disabled={busy}
+          >
+            Cancelar
+          </button>
+          <button type="submit" className="btn-primary" disabled={busy}>
+            {busy ? "Salvando…" : "Salvar"}
+          </button>
+        </div>
+      </form>
+    </Modal>
+  );
+}
+
+function EditVaccinationModal({
+  patientId,
+  vaccination,
+  vaccineName,
+  onClose,
+  onSaved,
+}: {
+  patientId: string;
+  vaccination: Vaccination;
+  vaccineName: string;
+  onClose: () => void;
+  onSaved: (patient: Patient) => void;
+}) {
+  const [date, setDate] = useState(vaccination.applicationDate);
+  const [error, setError] = useState<string | null>(null);
+  const [fieldError, setFieldError] = useState<string | undefined>();
+  const [busy, setBusy] = useState(false);
+
+  const handleSubmit = async (event: FormEvent) => {
+    event.preventDefault();
+    setBusy(true);
+    setError(null);
+    setFieldError(undefined);
+
+    try {
+      const updated = await updateVaccination(patientId, vaccination.id, date);
+      onSaved(updated);
+    } catch (err) {
+      if (err instanceof ApiError) {
+        setFieldError(err.fieldError("applicationDate"));
+        setError(err.details.length > 0 ? null : err.message);
+      } else {
+        setError("Erro inesperado. Tente novamente.");
+      }
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <Modal title="Editar data de aplicação" onClose={onClose}>
+      <form onSubmit={handleSubmit} className="space-y-4">
+        {error && <div className="alert-error">{error}</div>}
+
+        <p className="text-sm text-slate-600">
+          <strong>{vaccination.dose}ª dose</strong> de{" "}
+          <strong>{vaccineName}</strong>, aplicada em{" "}
+          {formatDate(vaccination.applicationDate)}.
+        </p>
+
+        <div>
+          <label htmlFor="edit-vaccination-date" className="label">
+            Nova data de aplicação
+          </label>
+          <input
+            id="edit-vaccination-date"
+            type="date"
+            className="input"
+            value={date}
+            max={todayIso()}
+            onChange={(event) => setDate(event.target.value)}
+            autoFocus
+          />
+          {fieldError && <p className="field-error">{fieldError}</p>}
+        </div>
+
+        <p className="text-xs text-slate-500">
+          A dose e a vacina não podem ser alteradas — remova o registro e
+          cadastre novamente se necessário.
+        </p>
+
+        <div className="flex justify-end gap-2 pt-2">
+          <button
+            type="button"
+            className="btn-secondary"
+            onClick={onClose}
+            disabled={busy}
+          >
+            Cancelar
+          </button>
+          <button type="submit" className="btn-primary" disabled={busy}>
+            {busy ? "Salvando…" : "Salvar"}
+          </button>
+        </div>
+      </form>
+    </Modal>
   );
 }
 

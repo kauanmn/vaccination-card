@@ -25,4 +25,16 @@ public class Vaccine
     }
 
     private Vaccine() { }
+
+    public void Update(string name, int? totalDoses)
+    {
+        if (string.IsNullOrWhiteSpace(name))
+            throw new InvalidVaccineException("Nome da vacina é obrigatório.");
+
+        if (totalDoses is < 1)
+            throw new InvalidVaccineException("Total de doses deve ser maior que zero.");
+
+        Name = name;
+        TotalDoses = totalDoses;
+    }
 }

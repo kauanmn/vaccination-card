@@ -40,4 +40,11 @@ public class VaccinationRepository : IVaccinationRepository
     {
         return await _context.Vaccinations.FirstOrDefaultAsync(v => v.Id == id);
     }
+
+    public async Task<int?> GetMaxDoseByVaccineAsync(Guid vaccineId)
+    {
+        return await _context.Vaccinations
+            .Where(v => v.VaccineId == vaccineId)
+            .MaxAsync(v => (int?)v.Dose);
+    }
 }

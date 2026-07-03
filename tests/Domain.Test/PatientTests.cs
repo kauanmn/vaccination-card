@@ -50,6 +50,28 @@ public class PatientTests
     }
 
     [Fact]
+    public void Rename_WithValidName_UpdatesName()
+    {
+        var patient = NewPatient();
+
+        patient.Rename("Kauan Manzato");
+
+        Assert.Equal("Kauan Manzato", patient.Name);
+    }
+
+    [Theory]
+    [InlineData("")]
+    [InlineData("   ")]
+    [InlineData(null)]
+    public void Rename_WithInvalidName_ThrowsAndKeepsName(string? name)
+    {
+        var patient = NewPatient();
+
+        Assert.Throws<InvalidPatientException>(() => patient.Rename(name!));
+        Assert.Equal("Kauan", patient.Name);
+    }
+
+    [Fact]
     public void AddVaccination_FirstDose_AddsToCard()
     {
         var patient = NewPatient();

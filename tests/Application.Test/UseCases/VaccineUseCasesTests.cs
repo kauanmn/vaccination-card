@@ -11,6 +11,9 @@ namespace ApplicationTest.UseCases;
 public class VaccineUseCasesTests
 {
     private readonly IVaccineRepository _vaccineRepository = Substitute.For<IVaccineRepository>();
+    private readonly IVaccinationRepository _vaccinationRepository = Substitute.For<IVaccinationRepository>();
+
+    private UpdateVaccine BuildUpdate() => new(_vaccineRepository, _vaccinationRepository);
 
     [Fact]
     public async Task CreateVaccine_PersistsAndReturnsResponse()
@@ -55,6 +58,73 @@ public class VaccineUseCasesTests
         var useCase = new GetVaccineById(_vaccineRepository);
 
         await Assert.ThrowsAsync<VaccineNotFound>(() => useCase.RunAsync(Guid.NewGuid()));
+    }
+
+    [Fact]
+    public async Task UpdateVaccine_WhenExists_UpdatesAndPersists()
+    {
+        var vaccine = new Vaccine("COVID-19", 3);
+        _vaccineRepository.GetByIdAsync(vaccine.Id).Returns(vaccine);
+        _vaccinationRepository.GetMaxDoseByVaccineAsync(vaccine.Id).Returns((int?)null);
+
+        var response = await BuildUpdate().RunAsync(vaccine.Id,
+            new UpdateVaccineRequest { Name = "COVID-19 (bivalente)", TotalDoses = 4 });
+
+        Assert.Equal("COVID-19 (bivalente)", response.Name);
+        Assert.Equal(4, response.TotalDoses);
+        await _vaccineRepository.Received(1).UpdateAsync(
+            Arg.Is<Vaccine>(v => v.Id == vaccine.Id && v.Name == "COVID-19 (bivalente)" && v.TotalDoses == 4));
+    }
+
+    [Fact]
+    public async Task UpdateVaccine_WhenMissing_ThrowsAndDoesNotPersist()
+    {
+        _vaccineRepository.GetByIdAsync(Arg.Any<Guid>()).Returns((Vaccine?)null);
+
+        await Assert.ThrowsAsync<VaccineNotFound>(() => BuildUpdate().RunAsync(Guid.NewGuid(),
+            new UpdateVaccineRequest { Name = "X", TotalDoses = 1 }));
+
+        await _vaccineRepository.DidNotReceive().UpdateAsync(Arg.Any<Vaccine>());
+    }
+
+    [Fact]
+    public async Task UpdateVaccine_ReducingTotalDosesBelowMaxAppliedDose_ThrowsAndDoesNotPersist()
+    {
+        var vaccine = new Vaccine("COVID-19", 3);
+        _vaccineRepository.GetByIdAsync(vaccine.Id).Returns(vaccine);
+        _vaccinationRepository.GetMaxDoseByVaccineAsync(vaccine.Id).Returns(3);
+
+        await Assert.ThrowsAsync<InvalidVaccineException>(() => BuildUpdate().RunAsync(vaccine.Id,
+            new UpdateVaccineRequest { Name = "COVID-19", TotalDoses = 2 }));
+
+        await _vaccineRepository.DidNotReceive().UpdateAsync(Arg.Any<Vaccine>());
+    }
+
+    [Fact]
+    public async Task UpdateVaccine_ToPeriodic_AllowedEvenWithAppliedDoses()
+    {
+        var vaccine = new Vaccine("COVID-19", 3);
+        _vaccineRepository.GetByIdAsync(vaccine.Id).Returns(vaccine);
+        _vaccinationRepository.GetMaxDoseByVaccineAsync(vaccine.Id).Returns(3);
+
+        var response = await BuildUpdate().RunAsync(vaccine.Id,
+            new UpdateVaccineRequest { Name = "COVID-19", TotalDoses = null });
+
+        Assert.Null(response.TotalDoses);
+        await _vaccineRepository.Received(1).UpdateAsync(Arg.Is<Vaccine>(v => v.TotalDoses == null));
+    }
+
+    [Fact]
+    public async Task UpdateVaccine_WithInvalidTotalDoses_ThrowsAndDoesNotPersist()
+    {
+        var vaccine = new Vaccine("COVID-19", 3);
+        _vaccineRepository.GetByIdAsync(vaccine.Id).Returns(vaccine);
+        _vaccinationRepository.GetMaxDoseByVaccineAsync(vaccine.Id).Returns((int?)null);
+
+        await Assert.ThrowsAsync<InvalidVaccineException>(() => BuildUpdate().RunAsync(vaccine.Id,
+            new UpdateVaccineRequest { Name = "COVID-19", TotalDoses = 0 }));
+
+        await _vaccineRepository.DidNotReceive().UpdateAsync(Arg.Any<Vaccine>());
     }
 
     [Fact]
