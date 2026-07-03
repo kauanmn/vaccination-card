@@ -1,10 +1,23 @@
-﻿namespace Domain.Entities;
+namespace Domain.Entities;
 
 public class Vaccination
 {
-    public required Guid Id { get; set; }
-    public required Guid PatientId { get; set; }
-    public required Guid VaccineId { get; set; }
-    public required int Dose { get; set; }
-    public required DateOnly ApplicationDate { get; set; }
+    public Guid Id { get; private set; }
+    public Guid PatientId { get; private set; }
+    public Guid VaccineId { get; private set; }
+    public int Dose { get; private set; }
+    public DateOnly ApplicationDate { get; private set; }
+
+    // Criada apenas pela raiz de agregação (Patient.AddVaccination),
+    // garantindo que as invariantes de dose sejam sempre aplicadas.
+    internal Vaccination(Guid patientId, Guid vaccineId, int dose, DateOnly applicationDate)
+    {
+        Id = Guid.NewGuid();
+        PatientId = patientId;
+        VaccineId = vaccineId;
+        Dose = dose;
+        ApplicationDate = applicationDate;
+    }
+
+    private Vaccination() { }
 }

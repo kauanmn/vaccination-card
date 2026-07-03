@@ -1,5 +1,6 @@
 using Api.Http;
 using Domain.Exceptions;
+using FluentValidation;
 
 namespace Api.Middlewares;
 
@@ -19,6 +20,14 @@ public class ExceptionHandlingMiddleware
         try
         {
             await _next(context);
+        }
+        catch (ValidationException ex)
+        {
+            var details = ex.Errors
+                .Select(e => new ApiErrorDetail(e.PropertyName, e.ErrorMessage))
+                .ToList();
+            await WriteError(context, StatusCodes.Status400BadRequest, "VALIDATION_ERROR",
+                "Erro de validação.", details);
         }
         catch (NotFoundException ex)
         {

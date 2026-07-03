@@ -1,24 +1,22 @@
-﻿
-using Application.Dtos.Patients;
 using Application.Ports.Persistence.Repositories;
 using Domain.Exceptions;
 
 namespace Application.UseCases.Patients;
 
-public class GetPatientById
+public class DeletePatient
 {
     private readonly IPatientRepository _patientRepository;
 
-    public GetPatientById(IPatientRepository patientRepository)
+    public DeletePatient(IPatientRepository patientRepository)
     {
         _patientRepository = patientRepository;
     }
 
-    public async Task<PatientResponse> RunAsync(Guid id)
+    public async Task RunAsync(Guid id)
     {
         var patient = await _patientRepository.GetByIdAsync(id)
                       ?? throw new PatientNotFound($"Paciente {id} não encontrado.");
 
-        return patient.ToResponse();
+        await _patientRepository.SoftDeleteAsync(patient.Id);
     }
 }

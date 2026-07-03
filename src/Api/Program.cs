@@ -31,5 +31,6 @@ app.UseMiddleware<ExceptionHandlingMiddleware>();
 app.UseMiddleware<ResponseWrapperMiddleware>();
 
 app.MapPatientEndpoints();
+app.MapVaccineEndpoints();
 
 app.Run();

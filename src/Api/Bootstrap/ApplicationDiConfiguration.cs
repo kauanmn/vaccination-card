@@ -1,4 +1,6 @@
 ﻿using Application.UseCases.Patients;
+using Application.Validators;
+using FluentValidation;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 
 namespace Api.Bootstrap;
@@ -8,6 +10,7 @@ public static class ApplicationDiConfiguration
     public static IServiceCollection AddApplicationDependencyInjectionConfiguration(IServiceCollection services)
     {
         AddAllUseCasesFromAssembly(services, typeof(GetPatientById));
+        services.AddValidatorsFromAssemblyContaining<CreatePatientRequestValidator>();
         return services;
     }
 

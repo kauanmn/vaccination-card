@@ -28,11 +28,18 @@ public class PatientRepository : IPatientRepository
 
     public async Task SoftDeleteAsync(Guid id)
     {
-        var patient = await _context.Patients.FindAsync(id);
-        if (patient is null)
-            return; // TODO: lançar exceção de domínio
+        var patient = await _context.Patients
+            .Include(p => p.Vaccinations)
+            .FirstOrDefaultAsync(p => p.Id == id);
 
+        if (patient is null)
+            return;
+
+        // Remover a pessoa também exclui seu cartão e os registros de vacinação.
         _context.Entry(patient).Property("IsDeleted").CurrentValue = true;
+        foreach (var vaccination in patient.Vaccinations)
+            _context.Entry(vaccination).Property("IsDeleted").CurrentValue = true;
+
         await _context.SaveChangesAsync();
     }
 
