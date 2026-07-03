@@ -7,10 +7,6 @@ public class Vaccine
     public Guid Id { get; private set; }
     public string Name { get; private set; }
 
-    /// <summary>
-    /// Número total de doses do esquema vacinal.
-    /// <c>null</c> indica uma vacina periódica (sem limite de doses, ex.: gripe anual).
-    /// </summary>
     public int? TotalDoses { get; private set; }
 
     public bool IsPeriodic => TotalDoses is null;
