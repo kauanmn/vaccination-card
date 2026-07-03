@@ -35,7 +35,6 @@ public class PatientRepository : IPatientRepository
         if (patient is null)
             return;
 
-        // Remover a pessoa também exclui seu cartão e os registros de vacinação.
         _context.Entry(patient).Property("IsDeleted").CurrentValue = true;
         foreach (var vaccination in patient.Vaccinations)
             _context.Entry(vaccination).Property("IsDeleted").CurrentValue = true;
