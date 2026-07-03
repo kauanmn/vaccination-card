@@ -54,4 +54,20 @@ public class PatientRepository : IPatientRepository
         return await _context.Patients
             .FirstOrDefaultAsync(p => p.Username == username);
     }
+
+    public async Task<(IReadOnlyList<Patient> Items, int TotalCount)> ListAsync(int page, int pageSize)
+    {
+        var query = _context.Patients
+            .AsNoTracking()
+            .OrderBy(p => p.Name);
+
+        var totalCount = await query.CountAsync();
+
+        var items = await query
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
+            .ToListAsync();
+
+        return (items, totalCount);
+    }
 }

@@ -9,4 +9,5 @@ public interface IPatientRepository
     Task SoftDeleteAsync(Guid id);
     Task<Patient?> GetByIdAsync(Guid id);
     Task<Patient?> GetByUsernameAsync(string username);
+    Task<(IReadOnlyList<Patient> Items, int TotalCount)> ListAsync(int page, int pageSize);
 }

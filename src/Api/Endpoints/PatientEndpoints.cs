@@ -1,6 +1,7 @@
 using Api.Bootstrap;
 using Api.Filters;
 using Api.Http;
+using Application.Dtos.Common;
 using Application.Dtos.Patients;
 using Application.Dtos.Vaccinations;
 using Application.UseCases.Patients;
@@ -14,6 +15,12 @@ public static class PatientEndpoints
     public static void MapPatientEndpoints(this IEndpointRouteBuilder app)
     {
         var group = app.MapGroup("/patients").WithTags("Patients");
+
+        group.MapGet("/", List)
+            .WithName("ListPatients")
+            .RequireAuthorization(AuthDiConfiguration.AdminOnlyPolicy)
+            .Produces<SuccessResponse<PagedResponse<PatientResponse>>>()
+            .Produces<ErrorResponse>(StatusCodes.Status403Forbidden);
 
         group.MapGet("/{id:guid}", GetById)
             .WithName("GetPatientById")
@@ -56,6 +63,15 @@ public static class PatientEndpoints
             .Produces(StatusCodes.Status204NoContent)
             .Produces<ErrorResponse>(StatusCodes.Status403Forbidden)
             .Produces<ErrorResponse>(StatusCodes.Status404NotFound);
+    }
+
+    private static async Task<IResult> List(
+        [FromServices] ListPatients useCase,
+        int page = 1,
+        int pageSize = 20)
+    {
+        var patients = await useCase.RunAsync(page, pageSize);
+        return Results.Ok(patients);
     }
 
     private static async Task<IResult> GetById(Guid id, [FromServices] GetPatientById useCase)
