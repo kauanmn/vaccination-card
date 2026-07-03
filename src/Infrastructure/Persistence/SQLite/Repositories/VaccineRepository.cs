@@ -40,4 +40,20 @@ public class VaccineRepository : IVaccineRepository
     {
         return await _context.Vaccines.FirstOrDefaultAsync(v => v.Id == id);
     }
+
+    public async Task<(IReadOnlyList<Vaccine> Items, int TotalCount)> ListAsync(int page, int pageSize)
+    {
+        var query = _context.Vaccines
+            .AsNoTracking()
+            .OrderBy(v => v.Name);
+
+        var totalCount = await query.CountAsync();
+
+        var items = await query
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
+            .ToListAsync();
+
+        return (items, totalCount);
+    }
 }

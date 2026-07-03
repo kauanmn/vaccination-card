@@ -96,6 +96,29 @@ public class EndpointsIntegrationTests : IClassFixture<VaccinationApiFactory>
     }
 
     [Fact]
+    public async Task ListVaccines_IsPublic_ReturnsPagedEnvelopeWithoutToken()
+    {
+        var admin = await AdminClientAsync();
+        await admin.PostAsJsonAsync("/vaccines",
+            new { name = $"Vac-{Guid.NewGuid():N}", totalDoses = 3 });
+
+        var client = _factory.CreateClient();
+
+        var response = await client.GetAsync("/vaccines?page=1&pageSize=10");
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+
+        var body = await response.Content.ReadFromJsonAsync<JsonElement>();
+        Assert.True(body.GetProperty("success").GetBoolean());
+
+        var data = body.GetProperty("data");
+        Assert.Equal(1, data.GetProperty("page").GetInt32());
+        Assert.Equal(10, data.GetProperty("pageSize").GetInt32());
+        Assert.True(data.GetProperty("totalCount").GetInt32() >= 1);
+        Assert.True(data.GetProperty("items").GetArrayLength() >= 1);
+    }
+
+    [Fact]
     public async Task GetPatient_WhenMissing_ReturnsNotFoundEnvelope()
     {
         var client = await AdminClientAsync();

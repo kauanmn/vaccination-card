@@ -56,4 +56,48 @@ public class VaccineUseCasesTests
 
         await Assert.ThrowsAsync<VaccineNotFound>(() => useCase.RunAsync(Guid.NewGuid()));
     }
+
+    [Fact]
+    public async Task ListVaccines_MapsItemsAndPagingMetadata()
+    {
+        var vaccines = new List<Vaccine> { new("COVID-19", 3), new("Hepatite B", 3) };
+        _vaccineRepository.ListAsync(1, 20).Returns(((IReadOnlyList<Vaccine>)vaccines, 5));
+        var useCase = new ListVaccines(_vaccineRepository);
+
+        var response = await useCase.RunAsync(page: 1, pageSize: 20);
+
+        Assert.Equal(2, response.Items.Count);
+        Assert.Equal("COVID-19", response.Items[0].Name);
+        Assert.Equal(1, response.Page);
+        Assert.Equal(20, response.PageSize);
+        Assert.Equal(5, response.TotalCount);
+        Assert.Equal(1, response.TotalPages);
+    }
+
+    [Fact]
+    public async Task ListVaccines_ClampsNonPositivePagingToDefaults()
+    {
+        _vaccineRepository.ListAsync(Arg.Any<int>(), Arg.Any<int>())
+            .Returns(((IReadOnlyList<Vaccine>)new List<Vaccine>(), 0));
+        var useCase = new ListVaccines(_vaccineRepository);
+
+        var response = await useCase.RunAsync(page: 0, pageSize: 0);
+
+        Assert.Equal(1, response.Page);
+        Assert.Equal(20, response.PageSize);
+        await _vaccineRepository.Received(1).ListAsync(1, 20);
+    }
+
+    [Fact]
+    public async Task ListVaccines_CapsPageSizeAtMax()
+    {
+        _vaccineRepository.ListAsync(Arg.Any<int>(), Arg.Any<int>())
+            .Returns(((IReadOnlyList<Vaccine>)new List<Vaccine>(), 0));
+        var useCase = new ListVaccines(_vaccineRepository);
+
+        var response = await useCase.RunAsync(page: 1, pageSize: 500);
+
+        Assert.Equal(100, response.PageSize);
+        await _vaccineRepository.Received(1).ListAsync(1, 100);
+    }
 }

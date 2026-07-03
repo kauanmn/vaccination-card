@@ -1,6 +1,7 @@
 using Api.Bootstrap;
 using Api.Filters;
 using Api.Http;
+using Application.Dtos.Common;
 using Application.Dtos.Vaccines;
 using Application.UseCases.Vaccines;
 using Microsoft.AspNetCore.Mvc;
@@ -12,6 +13,11 @@ public static class VaccineEndpoints
     public static void MapVaccineEndpoints(this IEndpointRouteBuilder app)
     {
         var group = app.MapGroup("/vaccines").WithTags("Vaccines");
+
+        group.MapGet("/", List)
+            .WithName("ListVaccines")
+            .AllowAnonymous()
+            .Produces<SuccessResponse<PagedResponse<VaccineResponse>>>();
 
         group.MapGet("/{id:guid}", GetById)
             .WithName("GetVaccineById")
@@ -26,6 +32,15 @@ public static class VaccineEndpoints
             .Produces<SuccessResponse<VaccineResponse>>(StatusCodes.Status201Created)
             .Produces<ErrorResponse>(StatusCodes.Status400BadRequest)
             .Produces<ErrorResponse>(StatusCodes.Status403Forbidden);
+    }
+
+    private static async Task<IResult> List(
+        [FromServices] ListVaccines useCase,
+        int page = 1,
+        int pageSize = 20)
+    {
+        var vaccines = await useCase.RunAsync(page, pageSize);
+        return Results.Ok(vaccines);
     }
 
     private static async Task<IResult> GetById(Guid id, [FromServices] GetVaccineById useCase)
