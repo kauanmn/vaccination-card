@@ -1,4 +1,5 @@
-﻿using Application.Dtos.Patients;
+﻿using Api.Http;
+using Application.Dtos.Patients;
 using Application.UseCases.Patients;
 using Microsoft.AspNetCore.Mvc;
 
@@ -12,13 +13,13 @@ public static class PatientEndpoints
 
         group.MapGet("/{id:guid}", GetById)
             .WithName("GetPatientById")
-            .Produces<PatientResponse>()
-            .Produces(StatusCodes.Status404NotFound);
-        
+            .Produces<SuccessResponse<PatientResponse>>()
+            .Produces<ErrorResponse>(StatusCodes.Status404NotFound);
+
         group.MapPost("/", Create)
             .WithName("CreatePatient")
-            .Produces<PatientResponse>(StatusCodes.Status201Created)
-            .Produces(StatusCodes.Status400BadRequest);
+            .Produces<SuccessResponse<PatientResponse>>(StatusCodes.Status201Created)
+            .Produces<ErrorResponse>(StatusCodes.Status400BadRequest);
     }
 
     private static async Task<IResult> GetById(Guid id, [FromServices] GetPatientById useCase)

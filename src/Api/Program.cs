@@ -1,5 +1,6 @@
 using Api.Bootstrap;
 using Api.Endpoints;
+using Api.Middlewares;
 using Infrastructure.Persistence.SQLite.Client;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -25,6 +26,9 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseHttpsRedirection();
+
+app.UseMiddleware<ExceptionHandlingMiddleware>();
+app.UseMiddleware<ResponseWrapperMiddleware>();
 
 app.MapPatientEndpoints();
 
