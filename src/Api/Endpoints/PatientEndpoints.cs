@@ -1,3 +1,4 @@
+using Api.Bootstrap;
 using Api.Filters;
 using Api.Http;
 using Application.Dtos.Patients;
@@ -16,30 +17,44 @@ public static class PatientEndpoints
 
         group.MapGet("/{id:guid}", GetById)
             .WithName("GetPatientById")
+            .RequireAuthorization()
+            .AddEndpointFilter<PatientOwnershipFilter>()
             .Produces<SuccessResponse<PatientResponse>>()
+            .Produces<ErrorResponse>(StatusCodes.Status403Forbidden)
             .Produces<ErrorResponse>(StatusCodes.Status404NotFound);
 
         group.MapPost("/", Create)
             .WithName("CreatePatient")
+            .RequireAuthorization(AuthDiConfiguration.AdminOnlyPolicy)
             .AddEndpointFilter<ValidationFilter<CreatePatientRequest>>()
-            .Produces<SuccessResponse<PatientResponse>>(StatusCodes.Status201Created)
-            .Produces<ErrorResponse>(StatusCodes.Status400BadRequest);
+            .Produces<SuccessResponse<CreatePatientResponse>>(StatusCodes.Status201Created)
+            .Produces<ErrorResponse>(StatusCodes.Status400BadRequest)
+            .Produces<ErrorResponse>(StatusCodes.Status403Forbidden);
 
         group.MapDelete("/{id:guid}", Delete)
             .WithName("DeletePatient")
+            .RequireAuthorization()
+            .AddEndpointFilter<PatientOwnershipFilter>()
             .Produces(StatusCodes.Status204NoContent)
+            .Produces<ErrorResponse>(StatusCodes.Status403Forbidden)
             .Produces<ErrorResponse>(StatusCodes.Status404NotFound);
 
         group.MapPost("/{patientId:guid}/vaccinations", RegisterVaccination)
             .WithName("RegisterVaccination")
+            .RequireAuthorization()
+            .AddEndpointFilter<PatientOwnershipFilter>()
             .AddEndpointFilter<ValidationFilter<RegisterVaccinationRequest>>()
             .Produces<SuccessResponse<PatientResponse>>(StatusCodes.Status201Created)
             .Produces<ErrorResponse>(StatusCodes.Status400BadRequest)
+            .Produces<ErrorResponse>(StatusCodes.Status403Forbidden)
             .Produces<ErrorResponse>(StatusCodes.Status404NotFound);
 
         group.MapDelete("/{patientId:guid}/vaccinations/{vaccinationId:guid}", RemoveVaccination)
             .WithName("RemoveVaccination")
+            .RequireAuthorization()
+            .AddEndpointFilter<PatientOwnershipFilter>()
             .Produces(StatusCodes.Status204NoContent)
+            .Produces<ErrorResponse>(StatusCodes.Status403Forbidden)
             .Produces<ErrorResponse>(StatusCodes.Status404NotFound);
     }
 

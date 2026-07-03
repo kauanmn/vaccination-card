@@ -79,6 +79,31 @@ public class PatientRepositoryTests : IDisposable
         }
     }
 
+    [Fact]
+    public async Task GetByUsernameAsync_ReturnsMatchingPatient()
+    {
+        await SeedPatientWithDoses();
+
+        await using var context = NewContext();
+        var repository = new PatientRepository(context);
+
+        var patient = await repository.GetByUsernameAsync("kauan");
+
+        Assert.NotNull(patient);
+        Assert.Equal("kauan", patient!.Username);
+    }
+
+    [Fact]
+    public async Task GetByUsernameAsync_WhenMissing_ReturnsNull()
+    {
+        await using var context = NewContext();
+        var repository = new PatientRepository(context);
+
+        var patient = await repository.GetByUsernameAsync("ghost");
+
+        Assert.Null(patient);
+    }
+
     private async Task<Guid> SeedPatientWithDoses(params int[] doses)
     {
         await using var context = NewContext();
@@ -87,7 +112,7 @@ public class PatientRepositoryTests : IDisposable
         var vaccine = new Vaccine("COVID-19", totalDoses: 3);
         context.Vaccines.Add(vaccine);
 
-        var patient = new Patient("Kauan");
+        var patient = new Patient("Kauan", "kauan", "hash");
         foreach (var dose in doses)
             patient.AddVaccination(vaccine, dose, Today);
 

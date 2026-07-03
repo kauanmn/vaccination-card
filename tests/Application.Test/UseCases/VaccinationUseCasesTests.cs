@@ -22,7 +22,7 @@ public class VaccinationUseCasesTests
     [Fact]
     public async Task Register_HappyPath_PersistsVaccinationAndReturnsCard()
     {
-        var patient = new Patient("Kauan");
+        var patient = new Patient("Kauan", "kauan", "hash");
         var vaccine = new Vaccine("COVID-19", 3);
         _patientRepository.GetByIdAsync(patient.Id).Returns(patient);
         _vaccineRepository.GetByIdAsync(vaccine.Id).Returns(vaccine);
@@ -50,7 +50,7 @@ public class VaccinationUseCasesTests
     [Fact]
     public async Task Register_WhenVaccineMissing_ThrowsNotFound()
     {
-        var patient = new Patient("Kauan");
+        var patient = new Patient("Kauan", "kauan", "hash");
         _patientRepository.GetByIdAsync(patient.Id).Returns(patient);
         _vaccineRepository.GetByIdAsync(Arg.Any<Guid>()).Returns((Vaccine?)null);
 
@@ -63,7 +63,7 @@ public class VaccinationUseCasesTests
     [Fact]
     public async Task Register_WhenDoseOutOfOrder_ThrowsAndDoesNotPersist()
     {
-        var patient = new Patient("Kauan");
+        var patient = new Patient("Kauan", "kauan", "hash");
         var vaccine = new Vaccine("COVID-19", 3);
         _patientRepository.GetByIdAsync(patient.Id).Returns(patient);
         _vaccineRepository.GetByIdAsync(vaccine.Id).Returns(vaccine);
@@ -77,7 +77,7 @@ public class VaccinationUseCasesTests
     [Fact]
     public async Task Remove_WhenBelongsToPatient_SoftDeletes()
     {
-        var patient = new Patient("Kauan");
+        var patient = new Patient("Kauan", "kauan", "hash");
         var vaccine = new Vaccine("COVID-19", 3);
         var vaccination = patient.AddVaccination(vaccine, 1, Today);
         _vaccinationRepository.GetByIdAsync(vaccination.Id).Returns(vaccination);
@@ -101,7 +101,7 @@ public class VaccinationUseCasesTests
     [Fact]
     public async Task Remove_WhenBelongsToAnotherPatient_ThrowsNotFound()
     {
-        var owner = new Patient("Kauan");
+        var owner = new Patient("Kauan", "kauan", "hash");
         var vaccine = new Vaccine("COVID-19", 3);
         var vaccination = owner.AddVaccination(vaccine, 1, Today);
         _vaccinationRepository.GetByIdAsync(vaccination.Id).Returns(vaccination);

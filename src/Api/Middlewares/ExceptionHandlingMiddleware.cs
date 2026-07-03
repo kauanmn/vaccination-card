@@ -1,4 +1,5 @@
 using Api.Http;
+using Application.Exceptions;
 using Domain.Exceptions;
 using FluentValidation;
 
@@ -28,6 +29,10 @@ public class ExceptionHandlingMiddleware
                 .ToList();
             await WriteError(context, StatusCodes.Status400BadRequest, "VALIDATION_ERROR",
                 "Erro de validação.", details);
+        }
+        catch (InvalidCredentialsException ex)
+        {
+            await WriteError(context, StatusCodes.Status401Unauthorized, "UNAUTHORIZED", ex.Message);
         }
         catch (NotFoundException ex)
         {

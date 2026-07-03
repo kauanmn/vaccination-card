@@ -1,5 +1,6 @@
 using Application.Dtos.Patients;
 using Application.Ports.Persistence.Repositories;
+using Application.Ports.Security;
 using Application.UseCases.Patients;
 using Domain.Entities;
 using Domain.Exceptions;
@@ -11,26 +12,53 @@ namespace ApplicationTest.UseCases;
 public class PatientUseCasesTests
 {
     private readonly IPatientRepository _patientRepository = Substitute.For<IPatientRepository>();
+    private readonly IPasswordHasher _passwordHasher = Substitute.For<IPasswordHasher>();
+
+    private CreatePatient BuildCreate()
+    {
+        _passwordHasher.Hash(Arg.Any<string>()).Returns("hashed");
+        return new CreatePatient(_patientRepository, _passwordHasher);
+    }
 
     [Fact]
-    public async Task CreatePatient_PersistsAndReturnsResponse()
+    public async Task CreatePatient_GeneratesCredentialsAndPersists()
     {
-        var useCase = new CreatePatient(_patientRepository);
-
-        var response = await useCase.RunAsync(new CreatePatientRequest { Name = "Kauan" });
+        var response = await BuildCreate().RunAsync(new CreatePatientRequest { Name = "Kauan" });
 
         Assert.Equal("Kauan", response.Name);
         Assert.NotEqual(Guid.Empty, response.Id);
-        await _patientRepository.Received(1).CreateAsync(Arg.Is<Patient>(p => p.Name == "Kauan"));
+        Assert.False(string.IsNullOrWhiteSpace(response.Username));
+        Assert.False(string.IsNullOrWhiteSpace(response.Password));
+
+        await _patientRepository.Received(1).CreateAsync(
+            Arg.Is<Patient>(p => p.Name == "Kauan" && p.PasswordHash == "hashed"));
+        _passwordHasher.Received(1).Hash(response.Password);
+    }
+
+    [Fact]
+    public async Task CreatePatient_DerivesUsernameFromName()
+    {
+        var response = await BuildCreate().RunAsync(new CreatePatientRequest { Name = "José da Silva" });
+
+        Assert.Equal("josedasilva", response.Username);
+    }
+
+    [Fact]
+    public async Task CreatePatient_WhenUsernameTaken_AppendsSuffix()
+    {
+        _patientRepository.GetByUsernameAsync("kauan")
+            .Returns(new Patient("Kauan", "kauan", "hash"));
+
+        var response = await BuildCreate().RunAsync(new CreatePatientRequest { Name = "Kauan" });
+
+        Assert.Equal("kauan2", response.Username);
     }
 
     [Fact]
     public async Task CreatePatient_WithInvalidName_ThrowsAndDoesNotPersist()
     {
-        var useCase = new CreatePatient(_patientRepository);
-
         await Assert.ThrowsAsync<InvalidPatientException>(
-            () => useCase.RunAsync(new CreatePatientRequest { Name = "" }));
+            () => BuildCreate().RunAsync(new CreatePatientRequest { Name = "" }));
 
         await _patientRepository.DidNotReceive().CreateAsync(Arg.Any<Patient>());
     }
@@ -38,7 +66,7 @@ public class PatientUseCasesTests
     [Fact]
     public async Task GetPatientById_WhenExists_ReturnsResponse()
     {
-        var patient = new Patient("Kauan");
+        var patient = new Patient("Kauan", "kauan", "hash");
         _patientRepository.GetByIdAsync(patient.Id).Returns(patient);
         var useCase = new GetPatientById(_patientRepository);
 
@@ -60,7 +88,7 @@ public class PatientUseCasesTests
     [Fact]
     public async Task DeletePatient_WhenExists_SoftDeletes()
     {
-        var patient = new Patient("Kauan");
+        var patient = new Patient("Kauan", "kauan", "hash");
         _patientRepository.GetByIdAsync(patient.Id).Returns(patient);
         var useCase = new DeletePatient(_patientRepository);
 

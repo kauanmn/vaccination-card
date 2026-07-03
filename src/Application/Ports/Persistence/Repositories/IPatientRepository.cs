@@ -8,4 +8,5 @@ public interface IPatientRepository
     Task UpdateAsync(Patient patient);
     Task SoftDeleteAsync(Guid id);
     Task<Patient?> GetByIdAsync(Guid id);
+    Task<Patient?> GetByUsernameAsync(string username);
 }

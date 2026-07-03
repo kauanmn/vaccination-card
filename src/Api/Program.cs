@@ -1,12 +1,14 @@
 using Api.Bootstrap;
 using Api.Endpoints;
 using Api.Middlewares;
+using Api.OpenApi;
 using Infrastructure.Persistence.SQLite.Client;
 
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddDependencyInjectionConfiguration(builder.Configuration);
-builder.Services.AddOpenApi();
+builder.Services.AddOpenApi(options =>
+    options.AddDocumentTransformer<BearerSecuritySchemeTransformer>());
 
 var app = builder.Build();
 
@@ -30,6 +32,10 @@ app.UseHttpsRedirection();
 app.UseMiddleware<ExceptionHandlingMiddleware>();
 app.UseMiddleware<ResponseWrapperMiddleware>();
 
+app.UseAuthentication();
+app.UseAuthorization();
+
+app.MapAuthEndpoints();
 app.MapPatientEndpoints();
 app.MapVaccineEndpoints();
 

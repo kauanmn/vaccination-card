@@ -16,6 +16,16 @@ public class PatientConfiguration : IEntityTypeConfiguration<Patient>
             .IsRequired()
             .HasMaxLength(200);
 
+        builder.Property(patient => patient.Username)
+            .IsRequired()
+            .HasMaxLength(200);
+
+        builder.HasIndex(patient => patient.Username)
+            .IsUnique();
+
+        builder.Property(patient => patient.PasswordHash)
+            .IsRequired();
+
         builder.Property<bool>("IsDeleted")
             .HasDefaultValue(false);
 

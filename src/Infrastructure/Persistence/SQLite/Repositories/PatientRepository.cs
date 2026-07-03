@@ -48,4 +48,10 @@ public class PatientRepository : IPatientRepository
             .Include(p => p.Vaccinations)
             .FirstOrDefaultAsync(p => p.Id == id);
     }
+
+    public async Task<Patient?> GetByUsernameAsync(string username)
+    {
+        return await _context.Patients
+            .FirstOrDefaultAsync(p => p.Username == username);
+    }
 }

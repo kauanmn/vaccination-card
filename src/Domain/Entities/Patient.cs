@@ -6,17 +6,27 @@ public class Patient
 {
     public Guid Id { get; private set; }
     public string Name { get; private set; }
+    public string Username { get; private set; }
+    public string PasswordHash { get; private set; }
 
     private readonly List<Vaccination> _vaccinations = [];
     public IReadOnlyCollection<Vaccination> Vaccinations => _vaccinations.AsReadOnly();
 
-    public Patient(string name)
+    public Patient(string name, string username, string passwordHash)
     {
         if (string.IsNullOrWhiteSpace(name))
             throw new InvalidPatientException();
 
+        if (string.IsNullOrWhiteSpace(username))
+            throw new InvalidPatientException("Usuário do paciente é obrigatório.");
+
+        if (string.IsNullOrWhiteSpace(passwordHash))
+            throw new InvalidPatientException("Senha do paciente é obrigatória.");
+
         Id = Guid.NewGuid();
         Name = name;
+        Username = username;
+        PasswordHash = passwordHash;
     }
 
     private Patient() { }
