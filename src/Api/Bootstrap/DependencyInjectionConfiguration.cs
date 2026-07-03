@@ -8,6 +8,7 @@ public static class DependencyInjectionConfiguration
         ApplicationDiConfiguration.AddApplicationDependencyInjectionConfiguration(services);
         DatabaseDiConfiguration.AddDependencyInjectionConfig(services, configuration);
         services.AddAuthDependencyInjectionConfiguration(configuration);
+        services.AddCorsDependencyInjectionConfiguration(configuration);
         return services;
     }
 }

@@ -32,6 +32,8 @@ app.UseHttpsRedirection();
 app.UseMiddleware<ExceptionHandlingMiddleware>();
 app.UseMiddleware<ResponseWrapperMiddleware>();
 
+app.UseCors(CorsDiConfiguration.PolicyName);
+
 app.UseAuthentication();
 app.UseAuthorization();
 
