@@ -1,12 +1,11 @@
-﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Domain", "Domain\Domain.csproj", "{4C346634-8EDD-4BAC-A4BF-C7CD4FDD659D}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Domain", "src\Domain\Domain.csproj", "{4C346634-8EDD-4BAC-A4BF-C7CD4FDD659D}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Application", "Application\Application.csproj", "{B9BD76A4-0D78-4E57-AD3B-D58090FA9BAB}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Application", "src\Application\Application.csproj", "{B9BD76A4-0D78-4E57-AD3B-D58090FA9BAB}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Infrastructure", "Infrastructure\Infrastructure.csproj", "{C4CA0F8D-31F3-4263-8B6D-26264937C544}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Infrastructure", "src\Infrastructure\Infrastructure.csproj", "{C4CA0F8D-31F3-4263-8B6D-26264937C544}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Api", "Api\Api.csproj", "{71B5F233-42FA-4C05-B391-1BFF91A57C2E}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Api", "src\Api\Api.csproj", "{71B5F233-42FA-4C05-B391-1BFF91A57C2E}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -30,5 +29,8 @@ Global
 		{71B5F233-42FA-4C05-B391-1BFF91A57C2E}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{71B5F233-42FA-4C05-B391-1BFF91A57C2E}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{71B5F233-42FA-4C05-B391-1BFF91A57C2E}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
 	EndGlobalSection
 EndGlobal
