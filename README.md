@@ -2,6 +2,12 @@
 
 Sistema de gestão de cartão de vacinação: API REST em .NET + frontend em React.
 
+## Live demo
+
+Deploy no Render: **https://vaccination-card-mio1.onrender.com**
+
+Login administrador: `admin` / `admin123`
+
 ## Estrutura
 
 | Pasta        | Conteúdo                                                        |
