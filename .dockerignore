@@ -1,0 +1,30 @@
+# Build outputs .NET
+**/bin
+**/obj
+
+# Frontend
+frontend/node_modules
+frontend/dist
+
+# Banco SQLite local
+**/*.db
+**/*.db-shm
+**/*.db-wal
+
+# Git / IDE / ferramentas
+.git
+.gitignore
+.idea
+.vs
+.vscode
+.claude
+
+# Docs e artefatos que não entram na imagem
+docs
+tests
+**/*.md
+Dockerfile
+.dockerignore
+docker-compose.yml
+render.yaml
+fly.toml

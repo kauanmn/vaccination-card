@@ -1,0 +1,29 @@
+# Config do Fly.io (https://fly.io). Passo a passo:
+#   fly launch --no-deploy        # cria o app (ajuste o nome abaixo)
+#   fly volumes create vacccard_data --size 1 --region gru
+#   fly secrets set Auth__Jwt__Key="<uma-chave-forte-de-32-bytes-ou-mais>"
+#   fly deploy
+app = "vaccination-card"
+primary_region = "gru"  # São Paulo
+
+[build]
+  dockerfile = "Dockerfile"
+
+[http_service]
+  internal_port = 8080
+  force_https = true
+  auto_stop_machines = "stop"
+  auto_start_machines = true
+  min_machines_running = 0
+
+[[vm]]
+  size = "shared-cpu-1x"
+  memory = "512mb"
+
+# Disco persistente para o banco SQLite (bate com /app/data do Dockerfile).
+[mounts]
+  source = "vacccard_data"
+  destination = "/app/data"
+
+[env]
+  ASPNETCORE_ENVIRONMENT = "Production"

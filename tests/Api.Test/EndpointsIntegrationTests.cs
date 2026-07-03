@@ -20,7 +20,7 @@ public class EndpointsIntegrationTests : IClassFixture<VaccinationApiFactory>
     {
         var client = _factory.CreateClient();
 
-        var response = await client.PostAsJsonAsync("/auth/login",
+        var response = await client.PostAsJsonAsync("/api/auth/login",
             new { username = VaccinationApiFactory.AdminUsername, password = VaccinationApiFactory.AdminPassword });
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
@@ -36,7 +36,7 @@ public class EndpointsIntegrationTests : IClassFixture<VaccinationApiFactory>
     {
         var client = await AdminClientAsync();
 
-        var response = await client.PostAsJsonAsync("/vaccines",
+        var response = await client.PostAsJsonAsync("/api/vaccines",
             new { name = "COVID-19", totalDoses = 3 });
 
         Assert.Equal(HttpStatusCode.Created, response.StatusCode);
@@ -52,7 +52,7 @@ public class EndpointsIntegrationTests : IClassFixture<VaccinationApiFactory>
     {
         var client = await AdminClientAsync();
 
-        var response = await client.PostAsJsonAsync("/vaccines",
+        var response = await client.PostAsJsonAsync("/api/vaccines",
             new { name = "", totalDoses = 0 });
 
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
@@ -68,7 +68,7 @@ public class EndpointsIntegrationTests : IClassFixture<VaccinationApiFactory>
     {
         var client = _factory.CreateClient();
 
-        var response = await client.PostAsJsonAsync("/vaccines",
+        var response = await client.PostAsJsonAsync("/api/vaccines",
             new { name = "COVID-19", totalDoses = 3 });
 
         Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
@@ -85,7 +85,7 @@ public class EndpointsIntegrationTests : IClassFixture<VaccinationApiFactory>
         var (_, username, password) = await CreatePatientAsync(admin, "Kauan");
         var patient = await AuthenticatedClientAsync(username, password);
 
-        var response = await patient.PostAsJsonAsync("/vaccines",
+        var response = await patient.PostAsJsonAsync("/api/vaccines",
             new { name = "COVID-19", totalDoses = 3 });
 
         Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
@@ -99,12 +99,12 @@ public class EndpointsIntegrationTests : IClassFixture<VaccinationApiFactory>
     public async Task ListVaccines_IsPublic_ReturnsPagedEnvelopeWithoutToken()
     {
         var admin = await AdminClientAsync();
-        await admin.PostAsJsonAsync("/vaccines",
+        await admin.PostAsJsonAsync("/api/vaccines",
             new { name = $"Vac-{Guid.NewGuid():N}", totalDoses = 3 });
 
         var client = _factory.CreateClient();
 
-        var response = await client.GetAsync("/vaccines?page=1&pageSize=10");
+        var response = await client.GetAsync("/api/vaccines?page=1&pageSize=10");
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
 
@@ -123,7 +123,7 @@ public class EndpointsIntegrationTests : IClassFixture<VaccinationApiFactory>
     {
         var client = await AdminClientAsync();
 
-        var response = await client.GetAsync($"/patients/{Guid.NewGuid()}");
+        var response = await client.GetAsync($"/api/patients/{Guid.NewGuid()}");
 
         Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
 
@@ -141,10 +141,10 @@ public class EndpointsIntegrationTests : IClassFixture<VaccinationApiFactory>
 
         var patient = await AuthenticatedClientAsync(username, password);
 
-        var own = await patient.GetAsync($"/patients/{ownId}");
+        var own = await patient.GetAsync($"/api/patients/{ownId}");
         Assert.Equal(HttpStatusCode.OK, own.StatusCode);
 
-        var other = await patient.GetAsync($"/patients/{otherId}");
+        var other = await patient.GetAsync($"/api/patients/{otherId}");
         Assert.Equal(HttpStatusCode.Forbidden, other.StatusCode);
 
         var body = await other.Content.ReadFromJsonAsync<JsonElement>();
@@ -156,13 +156,13 @@ public class EndpointsIntegrationTests : IClassFixture<VaccinationApiFactory>
     {
         var client = await AdminClientAsync();
 
-        var vaccine = await (await client.PostAsJsonAsync("/vaccines",
+        var vaccine = await (await client.PostAsJsonAsync("/api/vaccines",
             new { name = $"Vac-{Guid.NewGuid():N}", totalDoses = 3 })).Content.ReadFromJsonAsync<JsonElement>();
         var vaccineId = vaccine.GetProperty("data").GetProperty("id").GetGuid();
 
         var (patientId, _, _) = await CreatePatientAsync(client, "Kauan");
 
-        var response = await client.PostAsJsonAsync($"/patients/{patientId}/vaccinations",
+        var response = await client.PostAsJsonAsync($"/api/patients/{patientId}/vaccinations",
             new { vaccineId, dose = 2, applicationDate = "2026-01-10" });
 
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
@@ -185,7 +185,7 @@ public class EndpointsIntegrationTests : IClassFixture<VaccinationApiFactory>
 
     private static async Task<string> LoginAsync(HttpClient client, string username, string password)
     {
-        var response = await client.PostAsJsonAsync("/auth/login", new { username, password });
+        var response = await client.PostAsJsonAsync("/api/auth/login", new { username, password });
         response.EnsureSuccessStatusCode();
 
         var body = await response.Content.ReadFromJsonAsync<JsonElement>();
@@ -195,7 +195,7 @@ public class EndpointsIntegrationTests : IClassFixture<VaccinationApiFactory>
     private static async Task<(Guid Id, string Username, string Password)> CreatePatientAsync(
         HttpClient adminClient, string name)
     {
-        var response = await adminClient.PostAsJsonAsync("/patients", new { name });
+        var response = await adminClient.PostAsJsonAsync("/api/patients", new { name });
         response.EnsureSuccessStatusCode();
 
         var data = (await response.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("data");

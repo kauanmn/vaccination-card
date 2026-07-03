@@ -20,16 +20,19 @@ using (var scope = app.Services.CreateScope())
     await VaccineSeeder.SeedAsync(context);
 }
 
+app.MapOpenApi();
+app.UseSwaggerUI(options =>
+{
+    options.SwaggerEndpoint("/openapi/v1.json", "My API v1");
+});
+
 if (app.Environment.IsDevelopment())
 {
-    app.MapOpenApi();
-    app.UseSwaggerUI(options =>
-    {
-        options.SwaggerEndpoint("/openapi/v1.json", "My API v1");
-    });
+    app.UseHttpsRedirection();
 }
 
-app.UseHttpsRedirection();
+app.UseDefaultFiles();
+app.UseStaticFiles();
 
 app.UseMiddleware<ExceptionHandlingMiddleware>();
 app.UseMiddleware<ResponseWrapperMiddleware>();
@@ -39,9 +42,12 @@ app.UseCors(CorsDiConfiguration.PolicyName);
 app.UseAuthentication();
 app.UseAuthorization();
 
-app.MapAuthEndpoints();
-app.MapPatientEndpoints();
-app.MapVaccineEndpoints();
+var api = app.MapGroup("/api");
+api.MapAuthEndpoints();
+api.MapPatientEndpoints();
+api.MapVaccineEndpoints();
+
+app.MapFallbackToFile("index.html");
 
 app.Run();
 

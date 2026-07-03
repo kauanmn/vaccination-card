@@ -1,0 +1,20 @@
+# Rodar tudo (API + SPA) com um comando:
+#   docker compose up --build
+# App em http://localhost:8080  (Swagger em /swagger)
+services:
+  app:
+    build: .
+    image: vaccination-card
+    ports:
+      - "8080:8080"
+    environment:
+      ASPNETCORE_ENVIRONMENT: Production
+      # Chave de assinatura do JWT. Troque por um segredo forte (>= 32 bytes).
+      Auth__Jwt__Key: "troque-este-segredo-por-uma-chave-de-no-minimo-32-bytes!"
+    volumes:
+      # Persiste o banco SQLite entre reinícios do container.
+      - vacccard-data:/app/data
+    restart: unless-stopped
+
+volumes:
+  vacccard-data:

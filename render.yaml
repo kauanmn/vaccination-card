@@ -1,0 +1,19 @@
+# Blueprint do Render (https://render.com) — deploy via Docker.
+# Suba o repositório e escolha "New > Blueprint", apontando para este arquivo.
+services:
+  - type: web
+    name: vaccination-card
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    plan: free
+    region: oregon
+    # Endpoint público de GET, sem auth — bom para health check.
+    healthCheckPath: /api/vaccines
+    envVars:
+      - key: ASPNETCORE_ENVIRONMENT
+        value: Production
+      # Gera uma chave JWT aleatória e segura no primeiro deploy.
+      - key: Auth__Jwt__Key
+        generateValue: true
+# Observação: o plano free não tem disco persistente; o banco SQLite é
+# recriado (e re-semeado) a cada deploy/restart. Suficiente para demo.
